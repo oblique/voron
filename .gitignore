@@ -1,0 +1,10 @@
+*.o
+*~
+.*
+\#*#
+!.gitignore
+/TAGS
+/kernel.bin
+/kernel.elf
+/kernel.syms
+/uImage

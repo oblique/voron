@@ -1,20 +1,28 @@
-OUTPUT_FORMAT("elf32-littlearm", "elf32-littlearm", "elf32-littlearm")
+OUTPUT_FORMAT("elf32-littlearm")
 OUTPUT_ARCH(arm)
 ENTRY(_start)
 SECTIONS
 {
-	. = 0x82000000;
-	. = ALIGN(4);
-	.text :
+	.text 0x80008000 :
 	{
 		kernel/start.o (.text)
 		*(.text)
 	}
 
-	.data : { *(.data) }
+	.data : ALIGN(4096)
+	{
+		*(.data)
+	}
 
-	.bss : { *(.bss) }
+	.rodata : ALIGN(4096)
+	{
+		*(.rodata)
+	}
 
-	. = . + 0x2000;
-	_stack_top = .;
+	.bss : ALIGN(4096)
+	{
+		*(.bss)
+	}
+
+	_stack_top = . + 0x2000;
 }

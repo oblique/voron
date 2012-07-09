@@ -1,4 +1,5 @@
 #include <inttypes.h>
+#include <debug.h>
 
 static volatile u32 *gpio_wk7 = (u32*)0x4A31E058;
 static volatile u32 *gpio_wk8 = (u32*)0x4A31E05C;

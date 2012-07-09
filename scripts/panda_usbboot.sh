@@ -1,6 +1,6 @@
 #!/bin/sh
 if [ $# -eq 0 ]; then
-    BIN="kernel.bin"
+    BIN="usbbootImage"
 else
     BIN=$1
 fi

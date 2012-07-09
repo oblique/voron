@@ -8,3 +8,6 @@
 /kernel.elf
 /kernel.syms
 /uImage
+/usbbootImage.elf
+/usbbootImage
+/usbboot/kernel_image.ld

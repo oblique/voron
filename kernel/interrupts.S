@@ -10,6 +10,7 @@ init_vector_table:
 
 	bx lr
 
+
 .balign 32	@ the 5 least-significant bits of VBAR are reserved (i.e. 32 bytes alignment)
 vector_table:
 	ldr pc, =reset
@@ -25,6 +26,7 @@ vector_table:
 
 reset:
 	b .
+
 
 undefined_insn:
 	movs pc, lr
@@ -59,8 +61,10 @@ swi_ex:
 prefetch_abort:
 	subs pc, lr, #4
 
+
 data_abort:
 	subs pc, lr, #8
+
 
 irq_ex:
 	sub lr, lr, #4
@@ -68,6 +72,7 @@ irq_ex:
 	mov r0, #1
 	bl set_led_d1
 	ldmfd sp!, { pc }^
+
 
 fiq_ex:
 	sub lr, lr, #4

@@ -10,6 +10,7 @@ ASFLAGS = -march=armv7-r -ggdb -nostdlib -nostdinc -nodefaultlibs \
 	   -nostartfiles -fno-builtin $(INC)
 LIBGCC = -L $(shell dirname $(shell $(CC) $(CFLAGS) -print-libgcc-file-name)) -lgcc
 CC = $(CROSS_COMPILE)gcc
+LD = $(CROSS_COMPILE)ld
 OBJCOPY = $(CROSS_COMPILE)objcopy
 NM = $(CROSS_COMPILE)nm
 
@@ -17,7 +18,7 @@ objs = kernel/start.o kernel/kmain.o kernel/rs232.o kernel/print.o \
 	kernel/debug.o kernel/interrupts.o kernel/syscall_table.o   \
 	kernel/syscalls.o
 
-all: kernel.elf kernel.bin kernel.syms uImage usbbootImage
+all: uImage usbbootImage kernel.syms
 
 kernel.elf: $(objs) kernel/linker.ld
 	@echo -e "  LD\t$@"
@@ -32,7 +33,7 @@ kernel.syms: kernel.elf
 uImage: kernel.bin
 	@mkimage -A arm -T kernel -C none -a 0x80008000 -e 0x80008000 -n Voron -d $< $@
 
-usbbootImage: usbboot/usbboot.o usbboot/usbboot.ld usbboot/kernel_image.ld
+usbbootImage: usbboot/usbboot.o usbboot/usbboot.ld usbboot/kernel_image.o
 	@echo "Creating $@"
 	@echo -e "Entry Point: 0x82000000"
 	@$(CC) -T usbboot/usbboot.ld -nostdlib -nostdinc -nodefaultlibs -nostartfiles \
@@ -41,8 +42,8 @@ usbbootImage: usbboot/usbboot.o usbboot/usbboot.ld usbboot/kernel_image.ld
 	@rm -f __$@
 	@echo "Done"
 
-usbboot/kernel_image.ld: kernel.bin
-	@hexdump -v -e '"BYTE(0x" 1/1 "%02X" ")\n"' $< > $@
+usbboot/kernel_image.o: kernel.bin
+	@$(LD) -r -b binary -o $@ $<
 
 %.o: %.c
 	@echo -e "  CC\t$<"
@@ -54,4 +55,4 @@ usbboot/kernel_image.ld: kernel.bin
 
 clean:
 	@rm -f $(objs) kernel.elf kernel.bin kernel.syms uImage usbbootImage \
-	usbboot/kernel_image.ld usbboot/usbboot.o
+	usbboot/kernel_image.o usbboot/usbboot.o

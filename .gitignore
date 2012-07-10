@@ -9,4 +9,3 @@
 /kernel.syms
 /uImage
 /usbbootImage
-/usbboot/kernel_image.ld

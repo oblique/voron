@@ -3,6 +3,8 @@ OUTPUT_ARCH(arm)
 ENTRY(_start)
 SECTIONS
 {
+	_usr_stack_top = 0x80000000;
+
 	.text 0x80008000 :
 	{
 		kernel/start.o (.text)
@@ -24,5 +26,7 @@ SECTIONS
 		*(.bss)
 	}
 
-	_stack_top = . + 0x2000;
+	_svc_stack_top = . + 0x2000;
+	_fiq_stack_top = . + 0x2000;
+	_irq_stack_top = . + 0x2000;
 }

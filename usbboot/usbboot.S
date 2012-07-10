@@ -2,7 +2,7 @@
 .globl _start
 _start:
 	ldr sp, =_usbboot_stack_top
-	push { r0 - r12 }
+	stmfd sp!, { r0 - r12 }
 
 	/* copy kernel image at 0x80008000 */
 	ldr r0, =_image_start
@@ -15,5 +15,5 @@ _start:
 	cmp r0, r1
 	blo .L1
 
-	pop { r0 - r12 }
+	ldmfd sp!, { r0 - r12 }
 	ldr pc, =0x80008000	@ jump to 0x80008000

@@ -35,7 +35,8 @@ uImage: kernel.bin
 
 usbbootImage: usbboot/usbboot.o usbboot/usbboot.ld usbboot/kernel_image.o
 	@echo "Creating $@"
-	@echo -e "Entry Point: 0x82000000"
+	@echo "Entry Point: 0x82000000"
+	@echo "Load Image:  0x80008000"
 	@$(CC) -T usbboot/usbboot.ld -nostdlib -nostdinc -nodefaultlibs -nostartfiles \
 	-fno-builtin -o __$@ $<
 	@$(OBJCOPY) __$@ -O binary $@

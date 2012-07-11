@@ -26,7 +26,11 @@ SECTIONS
 		*(.bss)
 	}
 
-	_svc_stack_top = . + 0x2000;
-	_fiq_stack_top = . + 0x2000;
-	_irq_stack_top = . + 0x2000;
+	. = ALIGN(4096);
+	. = . + 0x2000;
+	_svc_stack_top = .;
+	. = . + 0x2000;
+	_fiq_stack_top = .;
+	. = . + 0x2000;
+	_irq_stack_top = .;
 }

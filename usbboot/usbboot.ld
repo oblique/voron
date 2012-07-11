@@ -3,6 +3,8 @@ OUTPUT_ARCH(arm)
 ENTRY(_start)
 SECTIONS
 {
+	_image_load_addr = 0x80008000;
+
 	.text 0x82000000 :
 	{
 		usbboot/usbboot.o (.text)
@@ -11,10 +13,10 @@ SECTIONS
 	.image : ALIGN(4)
 	{
 		_image_start = .;
-		usbboot/usbboot.o (.data)
+		usbboot/kernel_image.o (.data)
 	}
+	. = ALIGN(4);
 	_image_end = .;
 
-	. = ALIGN(4);
 	_usbboot_stack_top = . + 0x1000;
 }

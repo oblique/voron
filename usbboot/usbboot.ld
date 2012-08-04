@@ -3,7 +3,7 @@ OUTPUT_ARCH(arm)
 ENTRY(_start)
 SECTIONS
 {
-	_image_load_addr = 0x80008000;
+	_image_load_addr = 0x80000000;
 
 	.text 0x82000000 :
 	{

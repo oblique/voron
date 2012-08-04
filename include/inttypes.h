@@ -35,5 +35,6 @@ typedef long		intptr_t;
 #define S64_C(x) x ## LL
 #define U64_C(x) x ## ULL
 
+#define PTR_DIFF(a, b)	((uintptr_t)(a) - (uintptr_t)(b))
 
 #endif	/* __INTTYPES_H */

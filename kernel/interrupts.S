@@ -2,7 +2,7 @@
 .global init_vector_table
 init_vector_table:
 	mrc p15, 0, r0, c1, c0, 0	@ read CP15 SCTRL register
-	bic r0, r0, #(1 << 13)		@ set V flag to 0
+	bic r0, r0, #(1 << 13)		@ set V flag to 0 (disable high vectors)
 	mcr p15, 0, r0, c1, c0, 0	@ write CP15 SCTRL register
 
 	ldr r0, =vector_table
@@ -41,7 +41,7 @@ undefined_insn:
 swi_ex:
 	stmfd sp!, { r6 - r12, lr }
 	mrs r6, spsr
-	stmfd sp!, { r6 }
+	str r6, [sp, #-4]!
 
 	ldr r6, [lr, #-4]
 	bic r6, r6, #0xff000000
@@ -53,7 +53,7 @@ swi_ex:
 
 .Lsyscall_ret:
 	add sp, sp, #8
-	ldmfd sp!, { r6 }
+	ldr r6, [sp], #4
 	msr spsr, r6
 	ldmfd sp!, { r6 - r12, pc }^
 
@@ -68,7 +68,7 @@ data_abort:
 
 irq_ex:
 	sub lr, lr, #4
-	stmfd sp!, { lr }
+	str lr, [sp, #-4]!
 	mov r0, #1
 	bl set_led_d1
 	ldmfd sp!, { pc }^
@@ -76,7 +76,7 @@ irq_ex:
 
 fiq_ex:
 	sub lr, lr, #4
-	stmfd sp!, { lr }
+	str lr, [sp, #-4]!
 	mov r0, #1
 	bl set_led_d2
 	ldmfd sp!, { pc }^

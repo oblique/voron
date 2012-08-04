@@ -17,6 +17,12 @@ _start:
 	/* initialize vector table */
 	bl init_vector_table
 
+	/* disable caches for now */
+	mrc p15, 0, r0, c1, c0, 0
+	bic r0, r0, #(1 << 12)          @ set I flag to 0 (disable instruction cache)
+	bic r0, r0, #(1 << 2)		@ set C flag to 0 (disable data cache)
+	mcr p15, 0, r0, c1, c0, 0
+
 	cps #CPS_FIQ		@ change to FIQ mode
 	ldr sp, =_fiq_stack_top @ set FIQ stack
 
@@ -25,6 +31,8 @@ _start:
 
 	cps #CPS_SVC		@ change to SVC mode
 	cpsie if		@ enable interrupts
+
+	bl mm_init
 
 	/* example of calling a system call with at least 6 arguments */
 	mov r0, #1
@@ -37,7 +45,7 @@ _start:
 
 	/* example of calling a system call with more than 6 arguments */
 	mov r0, #7
-	stmfd sp!, { r0 }
+	str r0, [sp, #-4]!
 	mov r0, #1
 	mov r1, #2
 	mov r2, #3

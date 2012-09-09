@@ -1,6 +1,5 @@
-#include <inttypes.h>
+#include <kernel.h>
 #include <mmu.h>
-#include <errno.h>
 
 #define ALIGN32(x)	(((x) + 31) & ~31)
 
@@ -8,11 +7,15 @@ extern void *_ram_start;
 extern void *_ram_end;
 extern void *_kernel_bin_start;
 extern void *_kernel_bin_end;
+extern void *_kernel_heap_start;
+extern void *_kernel_heap_end;
 
 static u32 *bitmap;
 static uint_t bitmapsz;
 static uint_t kbound_s;
 static uint_t kbound_e;
+static uint_t kheapbound_s;
+static uint_t kheapbound_e;
 
 /* set range of bits */
 static int set_bitmap_bits(uint_t start_bit, uint_t n, int flag) {
@@ -65,6 +68,8 @@ void mm_init() {
 
 	kbound_s = PAGE_ALIGN(PTR_DIFF(&_kernel_bin_start, &_ram_start)) >> PAGE_SHIFT;
 	kbound_e = PAGE_ALIGN(PTR_DIFF(&_kernel_bin_end, &_ram_start)) >> PAGE_SHIFT;
+	kheapbound_s = PAGE_ALIGN(PTR_DIFF(&_kernel_heap_start, &_ram_start)) >> PAGE_SHIFT;
+	kheapbound_e = PAGE_ALIGN(PTR_DIFF(&_kernel_heap_end, &_ram_start)) >> PAGE_SHIFT;
 
 	ramsz = PTR_DIFF(&_ram_end, &_ram_start) + 1;
 	bitmapsz = ALIGN32(ramsz >> PAGE_SHIFT) / 32;
@@ -74,7 +79,8 @@ void mm_init() {
 	for (i = 0; i < bitmapsz; i++)
 		bitmap[i] = 0;
 
-	set_bitmap_bits(kbound_s, kbound_e - kbound_s, 1);
+	set_bitmap_bits(kbound_s, kheapbound_s - kbound_s, 1);
+	set_bitmap_bits(kheapbound_e, kbound_e - kheapbound_e, 1);
 
 	mmu_init();
 
@@ -83,7 +89,9 @@ void mm_init() {
 		     0x40000, MMU_AP_RW_NONE);
 	/* map kernel memory */
 	mmu_map_page(&_kernel_bin_start, &_kernel_bin_start,
-		     kbound_e - kbound_s, MMU_AP_RW_NONE);
+		     kheapbound_s - kbound_s, MMU_AP_RW_NONE);
+	mmu_map_page(&_kernel_heap_end, &_kernel_heap_end,
+		     kbound_e - kheapbound_e, MMU_AP_RW_NONE);
 
 	mmu_enable();
 }
@@ -94,7 +102,7 @@ void *palloc(uint_t npages) {
 	int ret;
 
 	if (npages == 0)
-		return (void*)-EINVAL;
+		return ERR_PTR(-EINVAL);
 
 	n = 0;
 	for (i = 0; i < bitmapsz; i++) {
@@ -114,12 +122,12 @@ void *palloc(uint_t npages) {
 			n = 0;
 	}
 
-	return (void*)-EINVAL;
+	return ERR_PTR(-EINVAL);
 
 out:
 	ret = set_bitmap_bits(sbit, npages, 1);
 	if (ret < 0)
-		return (void*)ret;
+		return ERR_PTR(ret);
 	return (void*)((uintptr_t)sbit * PAGE_SIZE + (uintptr_t)&_ram_start);
 }
 
@@ -135,7 +143,8 @@ int pfree(void *paddr, uint_t npages) {
 	sbit = (paddr_a - (uintptr_t)&_ram_start) >> PAGE_SHIFT;
 
 	/* we cannot free the memory of ourself */
-	if (sbit >= kbound_s && sbit < kbound_e)
+	if ((sbit >= kbound_s && sbit < kheapbound_s) ||
+	    (sbit >= kheapbound_e && sbit < kbound_e))
 		return -EINVAL;
 
 	return set_bitmap_bits(sbit, npages, 0);

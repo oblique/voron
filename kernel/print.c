@@ -1,7 +1,5 @@
-#include <inttypes.h>
+#include <kernel.h>
 #include <rs232.h>
-#include <print.h>
-#include <varg.h>
 
 int kputs(const char *s) {
 	return rs232_puts(s);

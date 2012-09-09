@@ -14,15 +14,17 @@ LD = $(CROSS_COMPILE)ld
 OBJCOPY = $(CROSS_COMPILE)objcopy
 NM = $(CROSS_COMPILE)nm
 
-objs = kernel/start.o kernel/kmain.o kernel/rs232.o kernel/print.o \
-	kernel/debug.o kernel/interrupts.o kernel/syscall_table.o   \
-	kernel/syscalls.o kernel/mmu.o kernel/mm.o
+KERNEL_SRCS_C = $(wildcard kernel/*.c)
+KERNEL_SRCS_S = $(wildcard kernel/*.S)
+KERNEL_SRCS = $(KERNEL_SRCS_C) $(KERNEL_SRCS_S)
+KERNEL_OBJS = $(KERNEL_SRCS_C:%.c=%.o) $(KERNEL_SRCS_S:%.S=%.o)
+HDRS = $(wildcard include/*.h)
 
 all: uImage usbbootImage kernel.syms
 
-kernel.elf: $(objs) kernel/linker.ld
+kernel.elf: $(KERNEL_OBJS) kernel/linker.ld
 	@echo -e "  LD\t$@"
-	@$(CC) $(LDFLAGS) -o $@ $(objs) $(LIBGCC)
+	@$(CC) $(LDFLAGS) -o $@ $(KERNEL_OBJS) $(LIBGCC)
 
 kernel.bin: kernel.elf
 	@$(OBJCOPY) $< -O binary $@
@@ -46,16 +48,16 @@ usbbootImage: usbboot/usbboot.o usbboot/usbboot.ld usbboot/kernel_image.o
 usbboot/kernel_image.o: kernel.bin
 	@$(LD) -r -b binary -o $@ $<
 
-%.o: %.c
+%.o: %.c $(HDRS)
 	@echo -e "  CC\t$<"
 	@$(CC) $(CFLAGS) -c -o $@ $<
 
-%.o: %.S
+%.o: %.S $(HDRS)
 	@echo -e "  AS\t$<"
 	@$(CC) $(ASFLAGS) -c -o $@ $<
 
 clean:
-	@rm -f $(objs) kernel.elf kernel.bin kernel.syms uImage usbbootImage \
+	@rm -f $(KERNEL_OBJS) kernel.elf kernel.bin kernel.syms uImage usbbootImage \
 	usbboot/kernel_image.o usbboot/usbboot.o voron.tar.gz
 
 targz:

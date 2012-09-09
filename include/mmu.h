@@ -6,10 +6,12 @@
 #define PAGE_MASK		(~(PAGE_SIZE - 1))
 #define PAGE_ALIGN(x)		(((x) + PAGE_SIZE - 1) & PAGE_MASK)
 
+#define L1_TYPE_MASK	3
 #define L1_FAULT	0
 #define L1_PAGE_TABLE	1
 #define L1_SECTION	2
 
+#define L2_TYPE_MASK	3
 #define L2_PAGE_FAULT	0
 #define L2_LARGE_PAGE	1
 #define L2_SMALL_PAGE	2
@@ -38,5 +40,6 @@ void mmu_init();
 void mmu_enable();
 void mmu_disable();
 int mmu_map_page(void *phys, void *virt, uint_t npages, mmu_ap_t perms);
+int kmmap(void *virt, uint_t npages, mmu_ap_t perms);
 
 #endif /* __MMU_H */

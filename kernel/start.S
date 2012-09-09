@@ -14,8 +14,18 @@ _start:
 	ldr r0, =boot_msg
 	bl kputs
 
+	/* init .bss section */
+	ldr r0, =_kernel_bss_start
+	ldr r1, =_kernel_bss_end
+	mov r2, #0
+	mov r3, #0
+1:
+	stmia r0!, { r2, r3 }
+	cmp r0, r1
+	blo 1b
+
 	/* initialize vector table */
-	bl init_vector_table
+	bl vector_table_init
 
 	/* disable caches for now */
 	mrc p15, 0, r0, c1, c0, 0
@@ -33,6 +43,21 @@ _start:
 	cpsie if		@ enable interrupts
 
 	bl mm_init
+
+	/* run constructors */
+	ldr r0, =_kernel_ctors_start
+	ldr r1, =_kernel_ctors_end
+1:
+	teq r0, r1
+	beq 2f
+	ldr r2, [r0], #4
+	stmfd sp!, { r0, r1 }
+	ldr lr, =.Lctor_ret
+	mov pc, r2
+.Lctor_ret:
+	ldmfd sp!, { r0, r1 }
+	b 1b
+2:
 
 	/* example of calling a system call with at least 6 arguments */
 	mov r0, #1

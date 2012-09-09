@@ -18,6 +18,13 @@ SECTIONS
 		*(.data)
 	}
 
+	.init_array : ALIGN(4096)
+	{
+		_kernel_ctors_start = .;
+		*(.init_array)
+		_kernel_ctors_end = .;
+	}
+
 	.rodata : ALIGN(4096)
 	{
 		*(.rodata)
@@ -25,10 +32,16 @@ SECTIONS
 
 	.bss : ALIGN(4096)
 	{
+		_kernel_bss_start = .;
 		*(.bss)
 	}
 
 	. = ALIGN(4096);
+	_kernel_bss_end = .;
+
+	_kernel_heap_start = .;
+	. = . + 0x10000000;
+	_kernel_heap_end = .;
 
 	. = . + 0x2000;
 	_svc_stack_top = .;

@@ -1,6 +1,6 @@
 .section .text
-.global init_vector_table
-init_vector_table:
+.global vector_table_init
+vector_table_init:
 	mrc p15, 0, r0, c1, c0, 0	@ read CP15 SCTRL register
 	bic r0, r0, #(1 << 13)		@ set V flag to 0 (disable high vectors)
 	mcr p15, 0, r0, c1, c0, 0	@ write CP15 SCTRL register

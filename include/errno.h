@@ -36,4 +36,10 @@
 #define	EDOM		33	/* Math argument out of domain of func */
 #define	ERANGE		34	/* Math result not representable */
 
+#define	MAX_ERRNO	34
+#define	IS_ERR(x)	((unsigned long)(x) >= (unsigned long)-MAX_ERRNO)
+#define	PTR_ERR(x)	((unsigned long)(x))
+#define	ERR_PTR(x)	((void*)(x))
+
+
 #endif	/* __ERRNO_H */

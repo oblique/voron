@@ -1,5 +1,4 @@
-#include <print.h>
-#include <inttypes.h>
+#include <kernel.h>
 
 long sys_test_6_args(u32 a1, u32 a2, u32 a3, u32 a4, u32 a5, u32 a6) {
 	kprintf("sys_test_6_args(%d, %d, %d, %d, %d, %d)\n", a1, a2, a3, a4, a5, a6);

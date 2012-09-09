@@ -1,8 +1,6 @@
-#include <inttypes.h>
+#include <kernel.h>
 #include <mmu.h>
-#include <errno.h>
-#include <debug.h>
-#include <print.h>
+#include <mm.h>
 
 static u32 mmu_ttb[4096] __attribute__((__aligned__ (16 * 1024)));
 static u32 l2[4096][256] __attribute__((__aligned__ (1024)));
@@ -57,6 +55,32 @@ void mmu_disable() {
 		"mcr p15, 0, v1, c1, c0, 0	\n\t"
 		: : : "v1"
 	);
+}
+
+static int is_mapped_virt(void *virt) {
+	uint_t pte_idx, pde_idx;
+	u32 *pde;
+	uintptr_t virt_a;
+
+	virt_a = (uintptr_t)virt;
+	pde_idx = virt_a >> 20;
+
+	switch (mmu_ttb[pde_idx] & L1_TYPE_MASK) {
+	case 1: /* page table */
+		pde = (u32*)(mmu_ttb[pde_idx] & ~0x3ff);
+		pte_idx = (virt_a & 0xff000) >> 12;
+		if (pde[pte_idx] & L2_TYPE_MASK)
+			return 1;
+		else
+			return 0; /* fault */
+	case 2: /* section */
+		return 1;
+	case 0: /* fault */
+	default:
+		return 0;
+	}
+
+	return 0;
 }
 
 /* map physical memory to virtual memory */
@@ -123,6 +147,34 @@ int mmu_map_page(void *phys, void *virt, uint_t npages, mmu_ap_t perms) {
 	/* invalidate TLB */
 	asm volatile("mcr p15, 0, v1, c8, c7, 0"
 		     : : : "v1", "memory");
+
+	return 0;
+}
+
+int kmmap(void *virt, uint_t npages, mmu_ap_t perms) {
+	uint_t i;
+	uintptr_t virt_a;
+	void *pa;
+
+	if (npages == 0)
+		return -EINVAL;
+
+	virt_a = (uintptr_t)virt;
+
+	/* overflow */
+	if (virt_a + npages * PAGE_SIZE < virt_a)
+		return -EFAULT;
+
+	for (i = 0; i < npages; i++) {
+		if (is_mapped_virt((void*)virt_a)) {
+			kprintf("WARNING: %p virtual address is already maped\n", virt);
+			virt_a += PAGE_SIZE;
+			continue;
+		}
+		pa = palloc(1);
+		mmu_map_page(pa, virt, 1, perms);
+		virt_a += PAGE_SIZE;
+	}
 
 	return 0;
 }

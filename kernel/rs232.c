@@ -1,7 +1,6 @@
-#include <inttypes.h>
+#include <kernel.h>
 #include <rs232.h>
 #include <uart.h>
-#include <io.h>
 
 static struct uart *uart = (struct uart*)0x48020000;
 

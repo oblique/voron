@@ -86,19 +86,29 @@ schedule(void)
 static void
 sched(struct regs *regs)
 {
-	struct task_struct *prev = current;
-
 	if (list_empty(&task_list_head))
 		return;
 
-	if (prev) {
-		if (prev->state != TASK_TERMINATE)
-			prev->regs = *regs;
+	if (current) {
+		struct list_head *iter;
+		struct task_struct *task, *prev;
 
-		if (list_is_last(&prev->list, &task_list_head))
-			current = list_first_entry(&task_list_head, struct task_struct, list);
-		else
-			current = list_entry(prev->list.next, struct task_struct, list);
+		if (current->state != TASK_TERMINATE)
+			current->regs = *regs;
+
+		prev = current;
+		list_for_each(iter, &prev->list) {
+			if (iter == &task_list_head)
+				continue;
+			task = list_entry(iter, struct task_struct, list);
+			if (task->state == TASK_RUNNABLE) {
+				current = task;
+				break;
+			}
+		}
+
+		if (iter == &prev->list && prev->state != TASK_RUNNING)
+			current = NULL;
 
 		if (prev->state == TASK_TERMINATE) {
 			spinlock_lock(prev->lock);
@@ -106,10 +116,8 @@ sched(struct regs *regs)
 			spinlock_unlock(prev->lock);
 			kfree(prev->stack_alloc);
 			kfree(prev);
-			if (list_empty(&task_list_head))
-				current = NULL;
-		} else
-			current->state = TASK_RUNNABLE;
+		} else if (prev != current)
+			prev->state = TASK_RUNNABLE;
 	} else
 		current = list_first_entry(&task_list_head, struct task_struct, list);
 

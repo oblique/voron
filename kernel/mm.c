@@ -18,7 +18,9 @@ static uint_t kheapbound_s;
 static uint_t kheapbound_e;
 
 /* set range of bits */
-static int set_bitmap_bits(uint_t start_bit, uint_t n, int flag) {
+static int
+set_bitmap_bits(uint_t start_bit, uint_t n, int flag)
+{
 	uint_t bound_s, bound_e, i;
 	u32 bits;
 
@@ -62,7 +64,10 @@ static int set_bitmap_bits(uint_t start_bit, uint_t n, int flag) {
 	return 0;
 }
 
-void mm_init() {
+void *palloc(uint_t n);
+void
+mm_init()
+{
 	uint_t i;
 	size_t ramsz;
 
@@ -96,7 +101,9 @@ void mm_init() {
 	mmu_enable();
 }
 
-void *palloc(uint_t npages) {
+void *
+palloc(uint_t npages)
+{
 	uint_t i, j, n;
 	uint_t sbit;
 	int ret;
@@ -114,7 +121,7 @@ void *palloc(uint_t npages) {
 				else if (!(bitmap[i] & (1 << j)))
 					n++;
 				if (n == npages) {
-					sbit = i * 32 + j - n;
+					sbit = i * 32 + j - n + 1;
 					goto out;
 				}
 			}
@@ -131,7 +138,9 @@ out:
 	return (void*)((uintptr_t)sbit * PAGE_SIZE + (uintptr_t)&_ram_start);
 }
 
-int pfree(void *paddr, uint_t npages) {
+int
+pfree(void *paddr, uint_t npages)
+{
 	uintptr_t paddr_a = (uintptr_t)paddr;
 	uint_t sbit;
 

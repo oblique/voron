@@ -5,7 +5,9 @@
 static u32 mmu_ttb[4096] __attribute__((__aligned__ (16 * 1024)));
 static u32 l2[4096][256] __attribute__((__aligned__ (1024)));
 
-void mmu_init() {
+void
+mmu_init(void)
+{
 	int i;
 
 	for (i = 0; i < 4096; i++)
@@ -35,7 +37,9 @@ void mmu_init() {
 	);
 }
 
-void mmu_enable() {
+void
+mmu_enable(void)
+{
 	asm volatile (
 		/* invalidate TLB */
 		"mcr p15, 0, v1, c8, c7, 0	\n\t"
@@ -47,7 +51,9 @@ void mmu_enable() {
 	);
 }
 
-void mmu_disable() {
+void
+mmu_disable(void)
+{
 	asm volatile (
 		/* disable MMU */
 		"mrc p15, 0, v1, c1, c0, 0	\n\t"
@@ -57,7 +63,38 @@ void mmu_disable() {
 	);
 }
 
-static int is_mapped_virt(void *virt) {
+uintptr_t
+virt_to_phys(void *virt)
+{
+	uint_t pte_idx, pde_idx;
+	u32 *pde;
+	uintptr_t virt_a;
+
+	virt_a = (uintptr_t)virt;
+	pde_idx = virt_a >> 20;
+
+	switch (mmu_ttb[pde_idx] & L1_TYPE_MASK) {
+	case 1: /* page table */
+		pde = (u32*)(mmu_ttb[pde_idx] & ~0x3ff);
+		pte_idx = (virt_a & 0xff000) >> 12;
+		if (pde[pte_idx] & L2_TYPE_MASK)
+			return ((pde[pte_idx] & ~0xfff) | (virt_a & 0xfff));
+		else
+			return 0; /* not mapped */
+	case 2: /* section */
+		return ((mmu_ttb[pde_idx] & ~0xfffff) | (virt_a & 0xfffff));
+	case 0: /* not mapped */
+	default:
+		return 0;
+	}
+
+	/* not mapped */
+	return 0;
+}
+
+int
+virt_is_mapped(void *virt)
+{
 	uint_t pte_idx, pde_idx;
 	u32 *pde;
 	uintptr_t virt_a;
@@ -84,7 +121,9 @@ static int is_mapped_virt(void *virt) {
 }
 
 /* map physical memory to virtual memory */
-int mmu_map_page(void *phys, void *virt, uint_t npages, mmu_ap_t perms) {
+int
+mmu_map_page(void *phys, void *virt, uint_t npages, mmu_ap_t perms)
+{
 	u32 pte, pte_perms;
 	u32 *pde;
 	uintptr_t phys_a, virt_a;
@@ -151,7 +190,9 @@ int mmu_map_page(void *phys, void *virt, uint_t npages, mmu_ap_t perms) {
 	return 0;
 }
 
-int kmmap(void *virt, uint_t npages, mmu_ap_t perms) {
+int
+kmmap(void *virt, uint_t npages, mmu_ap_t perms)
+{
 	uint_t i;
 	uintptr_t virt_a;
 	void *pa;
@@ -166,13 +207,13 @@ int kmmap(void *virt, uint_t npages, mmu_ap_t perms) {
 		return -EFAULT;
 
 	for (i = 0; i < npages; i++) {
-		if (is_mapped_virt((void*)virt_a)) {
+		if (virt_is_mapped((void*)virt_a)) {
 			kprintf("WARNING: %p virtual address is already maped\n", virt);
 			virt_a += PAGE_SIZE;
 			continue;
 		}
 		pa = palloc(1);
-		mmu_map_page(pa, virt, 1, perms);
+		mmu_map_page(pa, (void*)virt_a, 1, perms);
 		virt_a += PAGE_SIZE;
 	}
 

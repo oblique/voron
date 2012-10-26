@@ -24,7 +24,9 @@ static void *heap_last;
 extern void *_kernel_heap_start;
 extern void *_kernel_heap_end;
 
-static size_t roundup(size_t size) {
+static size_t
+roundup(size_t size)
+{
 	size_t ret;
 
 	if (size <= 16)
@@ -42,7 +44,9 @@ static size_t roundup(size_t size) {
 		return ret >> 1;
 }
 
-void *kmalloc(size_t size) {
+void *
+kmalloc(size_t size)
+{
 	int ret;
 	uint_t npages;
 	uintptr_t heap_last_a, tmp_addr;
@@ -100,7 +104,9 @@ void *kmalloc(size_t size) {
 	return memc->start;
 }
 
-void kfree(void *addr) {
+void
+kfree(void *addr)
+{
 	struct mem_chunk *memc, *tmp;
 	struct list_head *pos;
 
@@ -121,25 +127,29 @@ void kfree(void *addr) {
 }
 
 
-void kdump() {
+void
+kdump(void)
+{
 	struct list_head *pos, *tmp;
 	struct mem_chunk *memc;
 
 	kprintf("alloc list\n");
 	list_for_each_safe(pos, tmp, &alloclist) {
 		memc = list_entry(pos, struct mem_chunk, list);
-		kprintf("%p %p %d\n", memc, memc->start, memc->size);
+		kprintf("%p (phys: %p): %p %p %d\n", pos, virt_to_phys(pos), memc, memc->start, memc->size);
 	}
 
 	kprintf("\nfree list\n");
 	list_for_each_safe(pos, tmp, &freelist) {
 		memc = list_entry(pos, struct mem_chunk, list);
-		kprintf("%p %p %d\n", memc, memc->start, memc->size);
+		kprintf("%p (phys: %p): %p %p %d\n", pos, virt_to_phys(pos), memc, memc->start, memc->size);
 	}
 }
 
 __attribute__ ((__constructor__))
-static void alloc_init() {
+static void
+alloc_init(void)
+{
 	INIT_LIST_HEAD(&freelist);
 	INIT_LIST_HEAD(&alloclist);
 	heap_last = &_kernel_heap_start;

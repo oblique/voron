@@ -1,21 +1,29 @@
 #include <kernel.h>
 #include <rs232.h>
 
-int kputs(const char *s) {
+int
+kputs(const char *s)
+{
 	return rs232_puts(s);
 }
 
-int kputchar(int c) {
+int
+kputchar(int c)
+{
 	return rs232_putchar(c);
 }
 
-static inline int abs(int n) {
+static inline int
+abs(int n)
+{
 	if (n < 0)
 		return -n;
 	return n;
 }
 
-static int print_int(int n) {
+static int
+print_int(int n)
+{
 	int ret = 0, i = 1;
 
 	if (n > 0) {
@@ -38,7 +46,9 @@ static int print_int(int n) {
 	return ret;
 }
 
-static int print_hexint(uint_t n) {
+static int
+print_hexint(uint_t n)
+{
 	uint_t x, mask;
 	int i, bits, b, ret = 0;
 
@@ -72,7 +82,9 @@ static int print_hexint(uint_t n) {
 	return ret;
 }
 
-static int print_pointer(uintptr_t p) {
+static int
+print_pointer(uintptr_t p)
+{
 	uintptr_t x, mask;
 	int i, bits, b, ret = 0;
 
@@ -102,7 +114,9 @@ static int print_pointer(uintptr_t p) {
 	return ret;
 }
 
-int kprintf(const char *fmt, ...) {
+int
+kprintf(const char *fmt, ...)
+{
 	va_list ap;
 	int ret;
 
@@ -113,7 +127,9 @@ int kprintf(const char *fmt, ...) {
 	return ret;
 }
 
-int kvprintf(const char *fmt, va_list ap) {
+int
+kvprintf(const char *fmt, va_list ap)
+{
 	int d, ret = 0;
 	uint_t x;
 	uintptr_t p;

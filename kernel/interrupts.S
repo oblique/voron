@@ -1,3 +1,5 @@
+#include <p_modes.h>
+
 .section .text
 .global vector_table_init
 vector_table_init:
@@ -24,6 +26,48 @@ vector_table:
 .ltorg
 
 
+@@ save all the registers
+.macro SAVE_ALL_EX
+	stmfd sp!, { lr }     @ save lr (pc (r15) of the previous mode)
+	sub sp, sp, #8	      @ make space for sp (r13) and lr (r14) registers
+	stmfd sp!, { r0 - r12 } @ save r0 until r12
+	mrs r0, spsr	      @ save spsr (cpsr of the previus mode)
+	str r0, [sp, #-4]!    @ save cpsr
+	bic r0, r0, #0x60     @ clear F, T flags
+	orr r0, r0, #(1 << 7) @ set I flag
+	mrs r2, cpsr	      @ backup current cpsr
+	msr cpsr_c, r0	      @ switch to previous mode
+	mov r0, sp
+	mov r1, lr
+	msr cpsr, r2	      @ swith back to the current mode
+	str r0, [sp, #(4 * 14)] @ save sp (r13)
+	str r1, [sp, #(4 * 15)] @ save lr (r14)
+
+	ldr r0, [sp, #4]      @ restore destroyed registers
+	ldr r1, [sp, #8]
+	ldr r2, [sp, #12]
+.endm
+
+@@ restore registers
+.macro RESTORE_ALL_EX
+	ldr r1, [sp, #(4 * 14)] @ load sp (r13)
+	ldr r2, [sp, #(4 * 15)] @ load lr (r14)
+	ldr r0, [sp]
+	bic r0, r0, #0x60
+	orr r0, r0, #(1 << 7) @ get the previous mode number
+	mrs r3, cpsr
+	msr cpsr_c, r0	      @ switch to previous mode
+	mov sp, r1
+	mov lr, r2
+	msr cpsr, r3	      @ swith back to the current mode
+	ldr r0, [sp], #4      @ load spsr (cpsr of the previus mode)
+	msr spsr, r0
+	ldmfd sp!, { r0 - r12 }
+	add sp, sp, #8	      @ release the space we had for sp (r13) and lr (r14)
+	ldr lr, [sp], #4      @ load lr (pc (r15) of the previous mode)
+.endm
+
+
 reset:
 	b .
 
@@ -47,11 +91,10 @@ swi_ex:
 	bic r6, r6, #0xff000000
 
 	stmfd sp!, { r4, r5 }
-	ldr lr, =.Lsyscall_ret
+	ldr lr, =1f
 	ldr r7, =syscall_table
 	ldr pc, [r7, r6, lsl #2]
-
-.Lsyscall_ret:
+1:
 	add sp, sp, #8
 	ldr r6, [sp], #4
 	msr spsr, r6
@@ -59,19 +102,45 @@ swi_ex:
 
 
 prefetch_abort:
-	subs pc, lr, #4
+	@@ save registers
+	SAVE_ALL_EX
+	@@ set led d1 on
+	mov r0, #1
+	bl set_led_d1
+	@@ call handler
+	mov r0, sp		@ pass a pointer to the registers
+	mov r1, #0		@ 0 = prefetch
+	bl abort_handler	@ call handler
+
+	b .		      @ freeze
+	@subs pc, lr, #4
 
 
 data_abort:
-	subs pc, lr, #8
+	@@ save registers
+	SAVE_ALL_EX
+	@@ set led d2 on
+	mov r0, #1
+	bl set_led_d2
+	@@ call handler
+	mov r0, sp		@ pass a pointer to the registers
+	mov r1, #1		@ 1 = data
+	bl abort_handler	@ call handler
+
+	b .		      @ freeze
+	@subs pc, lr, #8
 
 
 irq_ex:
-	sub lr, lr, #4
-	str lr, [sp, #-4]!
-	mov r0, #1
-	bl set_led_d1
-	ldmfd sp!, { pc }^
+	@@ save registers
+	SAVE_ALL_EX
+	@@ call handler
+	mov r0, sp	      @ pass a pointer to the registers
+	bl irq_handler	      @ call irq_handler
+	@@ restore registers
+	RESTORE_ALL_EX
+	@@ exit exception
+	subs pc, lr, #4
 
 
 fiq_ex:

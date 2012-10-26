@@ -5,6 +5,6 @@
 
 void *kmalloc(size_t size);
 void kfree(void *addr);
-void kdump();
+void kdump(void);
 
 #endif	/* __ALLOC_H */

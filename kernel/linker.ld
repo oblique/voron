@@ -49,6 +49,9 @@ SECTIONS
 	_fiq_stack_top = .;
 	. = . + 0x2000;
 	_irq_stack_top = .;
+	. = . + 0x2000;
+	_abort_stack_top = .;
+
 
 	_kernel_bin_end = .;
 }

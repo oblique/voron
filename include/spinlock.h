@@ -5,7 +5,9 @@
 
 typedef unsigned int spinlock_t;
 
-static inline void spinlock_lock(spinlock_t *sl) {
+static inline void
+spinlock_lock(spinlock_t *sl)
+{
 	asm volatile (
 		"1:			\n\t"
 		"ldrex v1, [%0]		\n\t"
@@ -19,7 +21,9 @@ static inline void spinlock_lock(spinlock_t *sl) {
 	);
 }
 
-static inline void spinlock_unlock(spinlock_t *sl) {
+static inline void
+spinlock_unlock(spinlock_t *sl)
+{
 	asm volatile (
 		"str %1, [%0]"
 		:
@@ -29,7 +33,9 @@ static inline void spinlock_unlock(spinlock_t *sl) {
 }
 
 /* returns 1 if locked and 0 if not */
-static inline int spinlock_trylock(spinlock_t *sl) {
+static inline int
+spinlock_trylock(spinlock_t *sl)
+{
 	unsigned int tmp;
 
 	asm volatile (
@@ -47,7 +53,9 @@ static inline int spinlock_trylock(spinlock_t *sl) {
 		return 0;
 }
 
-static inline void INIT_SPINLOCK(spinlock_t *sl) {
+static inline void
+INIT_SPINLOCK(spinlock_t *sl)
+{
 	*sl = 0;
 }
 

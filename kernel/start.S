@@ -33,31 +33,39 @@ _start:
 	bic r0, r0, #(1 << 2)		@ set C flag to 0 (disable data cache)
 	mcr p15, 0, r0, c1, c0, 0
 
+	/* initialize memory management */
+	bl mm_init
+
+	/* initialize interrupts */
 	cps #CPS_FIQ		@ change to FIQ mode
 	ldr sp, =_fiq_stack_top @ set FIQ stack
 
 	cps #CPS_IRQ		@ change to IRQ mode
 	ldr sp, =_irq_stack_top @ set IRQ stack
 
-	cps #CPS_SVC		@ change to SVC mode
+	cps #CPS_ABT	      @ change to Abort mode
+	ldr sp, =_abort_stack_top @ set stack
+
+	cps #CPS_SVC		@ change back to SVC mode
+	bl irq_init		@ initialize controler
 	cpsie if		@ enable interrupts
 
-	bl mm_init
+	bl dmtimer_init
 
 	/* run constructors */
 	ldr r0, =_kernel_ctors_start
 	ldr r1, =_kernel_ctors_end
 1:
 	teq r0, r1
-	beq 2f
+	beq 3f
 	ldr r2, [r0], #4
 	stmfd sp!, { r0, r1 }
-	ldr lr, =.Lctor_ret
+	ldr lr, =2f
 	mov pc, r2
-.Lctor_ret:
+2:
 	ldmfd sp!, { r0, r1 }
 	b 1b
-2:
+3:
 
 	/* example of calling a system call with at least 6 arguments */
 	mov r0, #1
@@ -82,8 +90,10 @@ _start:
 	swi #1
 	add sp, sp, #(7 * 4)
 
-	bl kmain
-	b .
+	ldr r0, =kmain
+	mov r1, #0
+	bl kthread_create
+	b schedule
 
 .section .rodata
 boot_msg:

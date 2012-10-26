@@ -41,5 +41,7 @@ void mmu_enable();
 void mmu_disable();
 int mmu_map_page(void *phys, void *virt, uint_t npages, mmu_ap_t perms);
 int kmmap(void *virt, uint_t npages, mmu_ap_t perms);
+uintptr_t virt_to_phys(void *virt);
+int virt_is_mapped(void *virt);
 
 #endif /* __MMU_H */

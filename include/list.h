@@ -12,6 +12,7 @@ struct list_head {
 #define LIST_HEAD(name)	struct list_head name = LIST_HEAD_INIT(name)
 
 #define list_entry(ptr, type, member) container_of(ptr, type, member)
+#define list_first_entry(head_ptr, type, member) container_of((head_ptr)->next, type, member)
 
 /* list_for_each - iterate over a list
  * pos: the &struct list_head to use as a loop cursor.
@@ -30,7 +31,9 @@ struct list_head {
 	for (pos = (head)->next, n = pos->next; pos != (head);	\
 	     pos = n, n = pos->next)
 
-static inline void INIT_LIST_HEAD(struct list_head *list) {
+static inline void
+INIT_LIST_HEAD(struct list_head *list)
+{
 	list->prev = list;
 	list->next = list;
 }
@@ -38,30 +41,54 @@ static inline void INIT_LIST_HEAD(struct list_head *list) {
 /* Note: list_empty() on entry does not return true after this, the entry is
  * in an undefined state.
  */
-static inline void list_del(struct list_head *entry) {
+static inline void
+list_del(struct list_head *entry)
+{
 	entry->prev->next = entry->next;
 	entry->next->prev = entry->prev;
 	entry->next = NULL;
 	entry->prev = NULL;
 }
 
-static inline void list_add(struct list_head *entry, struct list_head *head) {
+static inline void
+list_add(struct list_head *entry, struct list_head *head)
+{
 	head->next->prev = entry;
 	entry->next = head->next;
 	entry->prev = head;
 	head->next = entry;
 }
 
-static inline void list_add_tail(struct list_head *entry, struct list_head *head) {
+static inline void
+list_add_tail(struct list_head *entry, struct list_head *head)
+{
 	head->prev->next = entry;
 	entry->next = head;
 	entry->prev = head->prev;
 	head->prev = entry;
 }
 
-static inline int list_empty(struct list_head *head) {
+static inline int
+list_empty(const struct list_head *head)
+{
 	return head->next == head;
 }
 
+/* list_is_singular - tests whether a list has just one entry. */
+static inline int
+list_is_singular(const struct list_head *head)
+{
+	return !list_empty(head) && (head->next == head->prev);
+}
+
+/* list_is_last - tests whether @list is the last entry in list @head
+ * list: the entry to test
+ * head: the head of the list
+ */
+static inline int
+list_is_last(const struct list_head *list, const struct list_head *head)
+{
+        return list->next == head;
+}
 
 #endif	/* __LIST_H */

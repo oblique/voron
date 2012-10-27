@@ -49,6 +49,7 @@ mmu_enable(void)
 		"mcr p15, 0, v1, c1, c0, 0	\n\t"
 		: : : "v1"
 	);
+	dsb();
 }
 
 void

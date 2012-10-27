@@ -9,6 +9,7 @@
 struct task_struct *curr_task = NULL;
 static struct list_head task_list_head;
 static spinlock_t task_struct_lock = SPINLOCK_INIT;
+static uatomic_t ms_counter = UATOMIC_INIT(0);
 
 static pid_t
 get_new_pid(void)
@@ -77,54 +78,112 @@ kthread_create(void (*routine)(void *), void *arg)
 void
 schedule(void)
 {
-	/* trigger scheduler timer */
-	dmtimer_trigger(1);
-	while(1)
+	u32 ms = uatomic_read(&ms_counter);
+	/* this guarantees that will loop until scheduler will executed */
+	while (ms == uatomic_read(&ms_counter)) {
+		/* trigger scheduler timer */
+		dmtimer_trigger(1);
+		/* wait for interrupt */
+		asm volatile("wfi");
+	}
+}
+
+static void
+__idle(void)
+{
+	while (1)
 		asm volatile("wfi");
 }
 
 static void
+__switch_to(struct regs *regs, struct task_struct *new_curr)
+{
+	if (!new_curr) {
+		/* if we we don't have any process
+		 * make irq_ex return to __idle */
+		regs->pc = (u32)&__idle;
+		/* we must add 4 because irq_ex subtracts 4 */
+		regs->pc += 4;
+	} else
+		*regs = new_curr->regs;
+	current = new_curr;
+	dsb();
+	asm volatile("clrex");
+}
+
+
+static void
 sched(struct regs *regs)
 {
+	struct list_head *iter, *curr_list;
+	struct task_struct *task, *new_curr;
+
+	/* TODO: if scheduler is triggered by schedule()
+	 * then add the correct value */
+	uatomic_add(SCHED_INT_MS, &ms_counter);
+
 	if (list_empty(&task_list_head))
 		return;
 
 	if (current) {
-		struct list_head *iter;
-		struct task_struct *task, *prev;
-
 		if (current->state != TASK_TERMINATE)
 			current->regs = *regs;
-
-		prev = current;
-		list_for_each(iter, &prev->list) {
-			if (iter == &task_list_head)
-				continue;
-			task = list_entry(iter, struct task_struct, list);
-			if (task->state == TASK_RUNNABLE) {
-				current = task;
-				break;
-			}
-		}
-
-		if (iter == &prev->list && prev->state != TASK_RUNNING)
-			current = NULL;
-
-		if (prev->state == TASK_TERMINATE) {
-			spinlock_lock(prev->lock);
-			list_del(&prev->list);
-			spinlock_unlock(prev->lock);
-			kfree(prev->stack_alloc);
-			kfree(prev);
-		} else if (prev != current)
-			prev->state = TASK_RUNNABLE;
+		curr_list = &current->list;
 	} else
-		current = list_first_entry(&task_list_head, struct task_struct, list);
+		curr_list = &task_list_head;
 
-	if (current) {
-		current->state = TASK_RUNNING;
-		*regs = current->regs;
+	new_curr = NULL;
+
+	list_for_each(iter, curr_list) {
+		if (iter == &task_list_head)
+			continue;
+
+		task = list_entry(iter, struct task_struct, list);
+
+		if (task->state == TASK_SLEEP && task->wakeup_ms <= uatomic_read(&ms_counter)) {
+			new_curr = task;
+			new_curr->state = TASK_RUNNING;
+			break;
+		} else if (task->state == TASK_RUNNABLE) {
+			new_curr = task;
+			new_curr->state = TASK_RUNNING;
+			break;
+		}
 	}
+
+	if (!new_curr && current && current->state == TASK_RUNNING)
+		new_curr = current;
+
+	if (current && current->state == TASK_TERMINATE) {
+		spinlock_lock(current->lock);
+		list_del(&current->list);
+		spinlock_unlock(current->lock);
+		kfree(current->stack_alloc);
+		kfree(current);
+	} else if (current && current != new_curr && current->state == TASK_RUNNING)
+		current->state = TASK_RUNNABLE;
+
+	__switch_to(regs, new_curr);
+}
+
+void
+sleep(u32 seconds)
+{
+	current->state = TASK_SLEEP;
+	current->wakeup_ms = uatomic_read(&ms_counter) + seconds * 1000;
+	schedule();
+}
+
+void
+msleep(u32 milliseconds)
+{
+	current->state = TASK_SLEEP;
+	/* TODO: if ms is smaller than SCHED_INT_MS
+	 * do a loop and don't schedule */
+	if (milliseconds < SCHED_INT_MS)
+		milliseconds = SCHED_INT_MS;
+	current->wakeup_ms = uatomic_read(&ms_counter) + milliseconds;
+	schedule();
 }
 
 static void
@@ -138,5 +197,5 @@ void
 sched_init(void)
 {
 	INIT_LIST_HEAD(&task_list_head);
-	dmtimer_register(1, sched_handler, 10);
+	dmtimer_register(1, sched_handler, SCHED_INT_MS);
 }

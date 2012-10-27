@@ -8,8 +8,10 @@ static void
 thread_func(void *arg)
 {
 	u32 n = (u32)arg;
-	while (1)
+	while (1) {
 		kprintf("thread %d\n", n);
+		msleep(500);
+	}
 }
 
 void

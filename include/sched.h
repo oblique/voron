@@ -5,8 +5,10 @@
 #include <spinlock.h>
 #include <list.h>
 
-typedef u32 pid_t;
+/* scheduler interval in milliseconds */
+#define SCHED_INT_MS	10
 
+typedef u32 pid_t;
 
 typedef enum {
 	TASK_TERMINATE,
@@ -23,6 +25,7 @@ struct task_struct {
 	struct list_head list;
 	spinlock_t *lock;
 	void *stack_alloc;
+	u32 wakeup_ms;
 };
 
 
@@ -36,6 +39,8 @@ current_task(void)
 
 #define current (*current_task())
 
+void sleep(u32 seconds);
+void msleep(u32 milliseconds);
 int kthread_create(void (*routine)(void *), void *arg);
 void schedule(void);
 

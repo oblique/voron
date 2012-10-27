@@ -1,9 +1,13 @@
 #ifndef __SPINLOCK_H
 #define __SPINLOCK_H
 
-#define SPINLOCK_INIT	((spinlock_t)0)
+#include <io.h>
 
-typedef unsigned int spinlock_t;
+typedef struct {
+	u32 lock;
+} spinlock_t;
+
+#define SPINLOCK_INIT	{ 0 }
 
 static inline void
 spinlock_lock(spinlock_t *sl)
@@ -12,24 +16,32 @@ spinlock_lock(spinlock_t *sl)
 		"1:			\n\t"
 		"ldrex v1, [%0]		\n\t"
 		"teq v1, #0		\n\t"
-		"strexeq v1, %1, [%0]	\n\t"
+		/* wait for event */
+		"wfene			\n\t"
+		"bne 1b			\n\t"
+		"strex v1, %1, [%0]	\n\t"
 		"teq v1, #0		\n\t"
 		"bne 1b			\n\t"
 		:
 		: "r" (sl), "r" (0x80000000)
 		: "v1", "memory"
 	);
+	dmb();
 }
 
 static inline void
 spinlock_unlock(spinlock_t *sl)
 {
+	dmb();
 	asm volatile (
 		"str %1, [%0]"
 		:
 		: "r" (sl), "r" (0)
 		: "memory"
 	);
+	dsb();
+	/* signal event */
+	asm volatile("sev");
 }
 
 /* returns 1 if locked and 0 if not */
@@ -47,16 +59,17 @@ spinlock_trylock(spinlock_t *sl)
 		: "memory"
 	);
 
-	if (tmp == 0)
+	if (tmp == 0) {
+		dmb();
 		return 1;
-	else
+	} else
 		return 0;
 }
 
 static inline void
 INIT_SPINLOCK(spinlock_t *sl)
 {
-	*sl = 0;
+	sl->lock = 0;
 }
 
 #endif	/* __SPINLOCK_H */

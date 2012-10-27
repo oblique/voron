@@ -212,7 +212,7 @@ dmtimer_register(int id, dmtimer_callback_func func, u32 ms)
 		/* enable start-idle */
 		writel(DMT_1MS_TIOCP_SMARTIDLE, &dmtimers[id].dmt_1ms->tiocp_1ms_cfg);
 
-		/* set microseconds */
+		/* set milliseconds */
 		val = 0xffffffff;
 		val -= ms * 32;
 		writel(val, &dmtimers[id].dmt_1ms->tldr);
@@ -227,7 +227,7 @@ dmtimer_register(int id, dmtimer_callback_func func, u32 ms)
 		/* enable start-idle */
 		writel(DMT_TIOCP_SMARTIDLE, &dmtimers[id].dmt->tiocp_cfg);
 
-		/* set microseconds */
+		/* set milliseconds */
 		val = 0xffffffff;
 		val -= ms * 32;
 		writel(val, &dmtimers[id].dmt->tldr);

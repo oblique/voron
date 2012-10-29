@@ -4,6 +4,7 @@
 #include <dmtimer.h>
 #include <sched.h>
 #include <mmu.h>
+#include <irq.h>
 #include <p_modes.h>
 
 struct task_struct *curr_task = NULL;
@@ -31,6 +32,8 @@ task_remove(void)
 	current->state = TASK_TERMINATE;
 	/* force schedule */
 	schedule();
+	while (1)
+		asm volatile("wfi" : : : "memory");
 }
 
 int
@@ -72,30 +75,29 @@ kthread_create(void (*routine)(void *), void *arg)
 	list_add(&task->list, &task_list_head);
 	spinlock_unlock(task->lock);
 
+	/* force schedule if it's the only task */
+	if (list_is_singular(&task_list_head))
+		schedule();
+
 	return 0;
 }
 
+/* force schedule */
 void
 schedule(void)
 {
-	u32 ms = uatomic_read(&ms_counter);
-	/* this guarantees that will loop until scheduler will executed */
-	while (ms == uatomic_read(&ms_counter)) {
-		/* trigger scheduler timer */
-		dmtimer_trigger(1);
-		/* wait for interrupt */
-		asm volatile("wfi");
-	}
+	/* trigger SGI */
+	irq_trigger_sgi(1);
 }
 
 static void
 __idle(void)
 {
 	while (1)
-		asm volatile("wfi");
+		asm volatile("wfi" : : : "memory");
 }
 
-static void
+static inline void
 __switch_to(struct regs *regs, struct task_struct *new_curr)
 {
 	if (!new_curr) {
@@ -107,8 +109,10 @@ __switch_to(struct regs *regs, struct task_struct *new_curr)
 	} else
 		*regs = new_curr->regs;
 	current = new_curr;
+	/* data synchronization barrier */
 	dsb();
-	asm volatile("clrex");
+	/* clear exclusive address access */
+	asm volatile("clrex" : : : "memory");
 }
 
 
@@ -117,10 +121,6 @@ sched(struct regs *regs)
 {
 	struct list_head *iter, *curr_list;
 	struct task_struct *task, *new_curr;
-
-	/* TODO: if scheduler is triggered by schedule()
-	 * then add the correct value */
-	uatomic_add(SCHED_INT_MS, &ms_counter);
 
 	if (list_empty(&task_list_head))
 		return;
@@ -171,7 +171,11 @@ sleep(u32 seconds)
 {
 	current->state = TASK_SLEEP;
 	current->wakeup_ms = uatomic_read(&ms_counter) + seconds * 1000;
+	/* force schedule */
 	schedule();
+	/* make sure that we rescheduled */
+	while (current->state == TASK_SLEEP)
+		asm volatile("wfi" : : : "memory");
 }
 
 void
@@ -183,11 +187,22 @@ msleep(u32 milliseconds)
 	if (milliseconds < SCHED_INT_MS)
 		milliseconds = SCHED_INT_MS;
 	current->wakeup_ms = uatomic_read(&ms_counter) + milliseconds;
+	/* force schedule */
 	schedule();
+	/* make sure that we rescheduled */
+	while (current->state == TASK_SLEEP)
+		asm volatile("wfi" : : : "memory");
 }
 
 static void
 sched_handler(__unused int timer_id, struct regs *regs)
+{
+	uatomic_add(SCHED_INT_MS, &ms_counter);
+	sched(regs);
+}
+
+static void
+force_sched_handler(__unused u32 irq_num, struct regs *regs)
 {
 	sched(regs);
 }
@@ -197,5 +212,6 @@ void
 sched_init(void)
 {
 	INIT_LIST_HEAD(&task_list_head);
+	irq_register(1, force_sched_handler);
 	dmtimer_register(1, sched_handler, SCHED_INT_MS);
 }

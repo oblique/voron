@@ -6,6 +6,7 @@
 typedef void (*irq_callback_func)(u32 irq_num, struct regs *regs);
 
 int irq_register(u32 irq_num, irq_callback_func func);
+int irq_trigger_sgi(u32 irq_num);
 
 /* board specific */
 #define HW_IRQ(x)	(x + 32)

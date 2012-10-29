@@ -18,7 +18,12 @@ struct gicc {
 	u32 iidr;
 };
 
-#define MAX_IT_LINES_NUMBER 32
+#define MAX_IT_LINES_NUMBER	32
+/* Forward the interrupt only to the CPU interface
+ * of the processor that requested the interrupt. */
+#define SGIR_TARGER_CPU_REQ	(2 << 24)
+
+#define NUM_OF_SGI	15
 
 /* GICv1 Distributor registers */
 struct gicd {
@@ -43,7 +48,6 @@ struct gicd {
 static struct gicc *gicc = (struct gicc*)0x48240100;
 static struct gicd *gicd = (struct gicd*)0x48241000;
 static irq_callback_func irq_handlers[NUM_OF_IRQ];
-
 
 int
 gic_register(u32 irq_num, irq_callback_func func)
@@ -88,6 +92,17 @@ gic_handler(struct regs *regs)
 
 	/* end of interrupt */
 	writel(iar, &gicc->eoir);
+}
+
+int
+gic_trigger_sgi(u32 irq_num)
+{
+	if (irq_num > NUM_OF_SGI)
+		return -EINVAL;
+
+	writel(irq_num | SGIR_TARGER_CPU_REQ, &gicd->sgir);
+
+	return 0;
 }
 
 void

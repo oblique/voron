@@ -1,7 +1,4 @@
 #include <kernel.h>
-#include <alloc.h>
-#include <string.h>
-#include <gic.h>
 #include <sched.h>
 
 static void

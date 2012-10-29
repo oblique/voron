@@ -16,7 +16,7 @@ spinlock_lock(spinlock_t *sl)
 		"1:			\n\t"
 		"ldrex v1, [%0]		\n\t"
 		"teq v1, #0		\n\t"
-		/* wait for event */
+		/* wait for event if it's lock */
 		"wfene			\n\t"
 		"bne 1b			\n\t"
 		"strex v1, %1, [%0]	\n\t"
@@ -41,7 +41,7 @@ spinlock_unlock(spinlock_t *sl)
 	);
 	dsb();
 	/* signal event */
-	asm volatile("sev");
+	asm volatile("sev" : : : "memory");
 }
 
 /* returns 1 if locked and 0 if not */
@@ -54,7 +54,7 @@ spinlock_trylock(spinlock_t *sl)
 		"ldrex %0, [%1]		\n\t"
 		"teq %0, #0		\n\t"
 		"strexeq %0, %2, [%1]	\n\t"
-		: "=r" (tmp)
+		: "=&r" (tmp)
 		: "r" (sl), "r" (0x80000000)
 		: "memory"
 	);

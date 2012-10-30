@@ -44,9 +44,9 @@ vector_table:
 	str r0, [sp, #(4 * 13)] @ save sp (r13)
 	str r1, [sp, #(4 * 14)] @ save lr (r14)
 	@@ restore destroyed registers
-	ldr r0, [sp, #4]
-	ldr r1, [sp, #8]
-	ldr r2, [sp, #12]
+	ldr r0, [sp]
+	ldr r1, [sp, #4]
+	ldr r2, [sp, #8]
 .endm
 
 @@ restore registers

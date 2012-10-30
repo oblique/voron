@@ -2,7 +2,6 @@
 #define __REGS_H
 
 struct regs {
-	u32 cpsr;
 	union {
 		u32 r[16];
 		struct {
@@ -51,6 +50,7 @@ struct regs {
 			u32 pc; /* r15 */
 		};
 	};
+	u32 cpsr;
 };
 
 #endif	/* __REGS_H */

@@ -28,11 +28,12 @@ vector_table:
 
 @@ save all the registers
 .macro SAVE_ALL_EX
+       sub sp, sp, #4	      @ make space for cpsr variable (cpsr of the previous mode)
 	stmfd sp!, { lr }     @ save lr (pc (r15) of the previous mode)
 	sub sp, sp, #8	      @ make space for sp (r13) and lr (r14) registers
 	stmfd sp!, { r0 - r12 } @ save r0 until r12
-	mrs r0, spsr	      @ save spsr (cpsr of the previus mode)
-	str r0, [sp, #-4]!    @ save cpsr
+	mrs r0, spsr		@ read spsr (cpsr of the previous mode)
+	str r0, [sp, #(4 * 16)] @ save cpsr variable
 	bic r0, r0, #0x60     @ clear F, T flags
 	orr r0, r0, #(1 << 7) @ set I flag
 	mrs r2, cpsr	      @ backup current cpsr
@@ -40,31 +41,31 @@ vector_table:
 	mov r0, sp
 	mov r1, lr
 	msr cpsr, r2	      @ swith back to the current mode
-	str r0, [sp, #(4 * 14)] @ save sp (r13)
-	str r1, [sp, #(4 * 15)] @ save lr (r14)
-
-	ldr r0, [sp, #4]      @ restore destroyed registers
+	str r0, [sp, #(4 * 13)] @ save sp (r13)
+	str r1, [sp, #(4 * 14)] @ save lr (r14)
+	@@ restore destroyed registers
+	ldr r0, [sp, #4]
 	ldr r1, [sp, #8]
 	ldr r2, [sp, #12]
 .endm
 
 @@ restore registers
 .macro RESTORE_ALL_EX
-	ldr r1, [sp, #(4 * 14)] @ load sp (r13)
-	ldr r2, [sp, #(4 * 15)] @ load lr (r14)
-	ldr r0, [sp]
-	bic r0, r0, #0x60
-	orr r0, r0, #(1 << 7) @ get the previous mode number
-	mrs r3, cpsr
-	msr cpsr_c, r0	      @ switch to previous mode
-	mov sp, r1
-	mov lr, r2
+	ldr r0, [sp, #(4 * 13)] @ load sp (r13)
+	ldr r1, [sp, #(4 * 14)] @ load lr (r14)
+	ldr r2, [sp, #(4 * 16)] @ load cpsr variable
+	msr spsr, r2	      @ restore spsr
+	bic r2, r2, #0x60     @ clear F, T flags
+	orr r2, r2, #(1 << 7) @ set I flag
+	mrs r3, cpsr	      @ backup current cpsr
+	msr cpsr_c, r2	      @ switch to previous mode
+	mov sp, r0
+	mov lr, r1
 	msr cpsr, r3	      @ swith back to the current mode
-	ldr r0, [sp], #4      @ load spsr (cpsr of the previus mode)
-	msr spsr, r0
 	ldmfd sp!, { r0 - r12 }
 	add sp, sp, #8	      @ release the space we had for sp (r13) and lr (r14)
 	ldr lr, [sp], #4      @ load lr (pc (r15) of the previous mode)
+	add sp, sp, #4	      @ release the space we had for cpsr variable
 .endm
 
 

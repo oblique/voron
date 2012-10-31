@@ -2,7 +2,6 @@
 #define __SCHED_H
 
 #include <kernel.h>
-#include <spinlock.h>
 #include <list.h>
 
 /* scheduler interval in milliseconds */
@@ -14,16 +13,23 @@ typedef enum {
 	TASK_TERMINATE,
 	TASK_RUNNABLE,
 	TASK_RUNNING,
-	TASK_SLEEP
+	TASK_SLEEPING
 } task_state_t;
+
+typedef enum {
+	SLEEPR_SLEEP,
+	SLEEPR_SUSPEND
+} sleep_reason_t;
 
 
 struct task_struct {
 	pid_t pid;
 	task_state_t state;
+	sleep_reason_t sleep_reason;
+	u32 sleep_chan;
+	int scheduled;
 	struct regs regs;
 	struct list_head list;
-	spinlock_t *lock;
 	void *stack_alloc;
 	u32 wakeup_ms;
 };
@@ -43,5 +49,7 @@ void sleep(u32 seconds);
 void msleep(u32 milliseconds);
 int kthread_create(void (*routine)(void *), void *arg);
 void schedule(void);
+void suspend_task(u32 channel);
+void resume_tasks(u32 channel);
 
 #endif	/* __SCHED_H */

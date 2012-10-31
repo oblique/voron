@@ -1,29 +1,35 @@
 #include <kernel.h>
 #include <list.h>
-#include <spinlock.h>
 #include <dmtimer.h>
 #include <sched.h>
 #include <mmu.h>
 #include <irq.h>
 #include <p_modes.h>
 
+#define MAX_HASH_ENT	64
+
 struct task_struct *curr_task = NULL;
 static struct list_head task_list_head;
-static spinlock_t task_struct_lock = SPINLOCK_INIT;
+static struct list_head ht_sleep[MAX_HASH_ENT];
 static uatomic_t ms_counter = UATOMIC_INIT(0);
 
 static pid_t
 get_new_pid(void)
 {
-	static pid_t currpid = 0;
-	static spinlock_t lock = SPINLOCK_INIT;
-	pid_t new_pid;
+	static uatomic_t currpid = UATOMIC_INIT(0);
+	return (pid_t)uatomic_add_return(1, &currpid);
+}
 
-	spinlock_lock(&lock);
-	new_pid = ++currpid;
-	spinlock_unlock(&lock);
+static inline u32
+hash_chan(u32 channel)
+{
+	int i;
+	u32 hash = 0;
 
-	return new_pid;
+	for (i = 0; i < 32; ++i)
+		hash = (channel & (1 << i)) + (hash << 8) + (hash << 12) - hash;
+
+	return hash;
 }
 
 static void
@@ -32,8 +38,6 @@ task_remove(void)
 	current->state = TASK_TERMINATE;
 	/* force schedule */
 	schedule();
-	while (1)
-		asm volatile("wfi" : : : "memory");
 }
 
 int
@@ -54,7 +58,6 @@ kthread_create(void (*routine)(void *), void *arg)
 
 	task->state = TASK_RUNNABLE;
 	task->pid = get_new_pid();
-	task->lock = &task_struct_lock;
 	memset(&task->regs, 0, sizeof(task->regs));
 	/* set thread stack */
 	task->regs.sp = (u32)task->stack_alloc;
@@ -66,14 +69,14 @@ kthread_create(void (*routine)(void *), void *arg)
 	task->regs.pc = (u32)routine;
 	task->regs.pc += 4;
 	/* set return address */
-	task->regs.lr = (u32)&task_remove;
+	task->regs.lr = (u32)task_remove;
 	/* thread will run in System mode */
 	task->regs.cpsr = CPS_SYS;
 
 	/* add it to task list of the scheduler */
-	spinlock_lock(task->lock);
+	irq_disable();
 	list_add(&task->list, &task_list_head);
-	spinlock_unlock(task->lock);
+	irq_enable();
 
 	/* force schedule if it's the only task */
 	if (list_is_singular(&task_list_head))
@@ -86,8 +89,17 @@ kthread_create(void (*routine)(void *), void *arg)
 void
 schedule(void)
 {
+	if (current)
+		current->scheduled = 0;
 	/* trigger SGI */
 	irq_trigger_sgi(1);
+	/* make sure that we rescheduled */
+	while (1) {
+		if (current && current->state != TASK_TERMINATE &&
+		    current->scheduled)
+			break;
+		asm volatile("wfi" : : : "memory");
+	}
 }
 
 static void
@@ -103,7 +115,7 @@ __switch_to(struct regs *regs, struct task_struct *new_curr)
 	if (!new_curr) {
 		/* if we we don't have any process
 		 * make irq_ex return to __idle */
-		regs->pc = (u32)&__idle;
+		regs->pc = (u32)__idle;
 		/* we must add 4 because irq_ex subtracts 4 */
 		regs->pc += 4;
 	} else
@@ -126,6 +138,7 @@ sched(struct regs *regs)
 		return;
 
 	if (current) {
+		current->scheduled = 1;
 		if (current->state != TASK_TERMINATE)
 			current->regs = *regs;
 		curr_list = &current->list;
@@ -140,7 +153,9 @@ sched(struct regs *regs)
 
 		task = list_entry(iter, struct task_struct, list);
 
-		if (task->state == TASK_SLEEP && task->wakeup_ms <= uatomic_read(&ms_counter)) {
+		if (task->state == TASK_SLEEPING &&
+		    task->sleep_reason == SLEEPR_SLEEP &&
+		    task->wakeup_ms <= uatomic_read(&ms_counter)) {
 			new_curr = task;
 			new_curr->state = TASK_RUNNING;
 			break;
@@ -151,47 +166,81 @@ sched(struct regs *regs)
 		}
 	}
 
-	if (!new_curr && current && current->state == TASK_RUNNING)
-		new_curr = current;
-
-	if (current && current->state == TASK_TERMINATE) {
-		spinlock_lock(current->lock);
-		list_del(&current->list);
-		spinlock_unlock(current->lock);
-		kfree(current->stack_alloc);
-		kfree(current);
-	} else if (current && current != new_curr && current->state == TASK_RUNNING)
-		current->state = TASK_RUNNABLE;
+	if (current) {
+		if (current->state == TASK_SLEEPING &&
+		    current->sleep_reason == SLEEPR_SUSPEND) {
+			int i = hash_chan(current->sleep_chan) % MAX_HASH_ENT;
+			list_del(&current->list);
+			list_add(&current->list, &ht_sleep[i]);
+		} else if (current->state == TASK_RUNNING) {
+			if (!new_curr)
+				new_curr = current;
+			else
+				current->state = TASK_RUNNABLE;
+		} else if (current->state == TASK_TERMINATE) {
+			list_del(&current->list);
+			kfree(current->stack_alloc);
+			kfree(current);
+		}
+	}
 
 	__switch_to(regs, new_curr);
 }
 
 void
+suspend_task(u32 channel)
+{
+	current->sleep_chan = channel;
+	current->sleep_reason = SLEEPR_SUSPEND;
+	dmb();
+	current->state = TASK_SLEEPING;
+	schedule();
+}
+
+void
+resume_tasks(u32 channel)
+{
+	struct list_head *iter, *n;
+	struct task_struct *task;
+	int i;
+
+	i = hash_chan(channel) % MAX_HASH_ENT;
+	list_for_each_safe(iter, n, &ht_sleep[i]) {
+		task = list_entry(iter, struct task_struct, list);
+		if (task->sleep_chan == channel) {
+			task->state = TASK_RUNNABLE;
+			irq_disable();
+			list_del(iter);
+			list_add(iter, &task_list_head);
+			irq_enable();
+		}
+	}
+}
+
+void
 sleep(u32 seconds)
 {
-	current->state = TASK_SLEEP;
 	current->wakeup_ms = uatomic_read(&ms_counter) + seconds * 1000;
+	current->sleep_reason = SLEEPR_SLEEP;
+	dmb();
+	current->state = TASK_SLEEPING;
 	/* force schedule */
 	schedule();
-	/* make sure that we rescheduled */
-	while (current->state == TASK_SLEEP)
-		asm volatile("wfi" : : : "memory");
 }
 
 void
 msleep(u32 milliseconds)
 {
-	current->state = TASK_SLEEP;
 	/* TODO: if ms is smaller than SCHED_INT_MS
 	 * do a loop and don't schedule */
 	if (milliseconds < SCHED_INT_MS)
 		milliseconds = SCHED_INT_MS;
 	current->wakeup_ms = uatomic_read(&ms_counter) + milliseconds;
+	current->sleep_reason = SLEEPR_SLEEP;
+	dmb();
+	current->state = TASK_SLEEPING;
 	/* force schedule */
 	schedule();
-	/* make sure that we rescheduled */
-	while (current->state == TASK_SLEEP)
-		asm volatile("wfi" : : : "memory");
 }
 
 static void
@@ -211,7 +260,12 @@ __attribute__((__constructor__))
 void
 sched_init(void)
 {
+	size_t i;
+
 	INIT_LIST_HEAD(&task_list_head);
+	for (i = 0; i < ARRAY_SIZE(ht_sleep); i++)
+		INIT_LIST_HEAD(&ht_sleep[i]);
+
 	irq_register(1, force_sched_handler);
 	dmtimer_register(1, sched_handler, SCHED_INT_MS);
 }

@@ -7,8 +7,9 @@ typedef struct {
 	u32 counter;
 } uatomic_t;
 
-#define UATOMIC_INIT(i)	{ (i) }
-#define uatomic_read(v)	(__uatomic_read(v).counter)
+#define UATOMIC_INIT(i)		{ (i) }
+#define uatomic_read(v)		(__uatomic_read(v).counter)
+#define uatomic_add_return(i, v)	(__uatomic_add_return(i, v).counter)
 
 static inline uatomic_t
 __uatomic_read(uatomic_t *v)
@@ -59,6 +60,24 @@ uatomic_add(u32 i, uatomic_t *v)
 		: "r" (i), "r" (v)
 		: "v1", "v2", "memory"
 	);
+}
+
+static inline uatomic_t
+__uatomic_add_return(u32 i, uatomic_t *v)
+{
+	uatomic_t r;
+	asm volatile (
+		"1:			\n\t"
+		"ldrex %0, [%2]		\n\t"
+		"add %0, %0, %1		\n\t"
+		"strex v1, %0, [%2]	\n\t"
+		"teq v1, #0		\n\t"
+		"bne 1b			\n\t"
+		: "=&r" (r)
+		: "r" (i), "r" (v)
+		: "v1", "memory"
+	);
+	return r;
 }
 
 #endif	/* __ATOMIC_H */

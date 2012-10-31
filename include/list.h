@@ -53,19 +53,26 @@ list_del(struct list_head *entry)
 static inline void
 list_add(struct list_head *entry, struct list_head *head)
 {
-	head->next->prev = entry;
 	entry->next = head->next;
 	entry->prev = head;
+	head->next->prev = entry;
 	head->next = entry;
 }
 
 static inline void
 list_add_tail(struct list_head *entry, struct list_head *head)
 {
-	head->prev->next = entry;
 	entry->next = head;
 	entry->prev = head->prev;
+	head->prev->next = entry;
 	head->prev = entry;
+}
+
+static inline void
+list_move_tail(struct list_head *entry, struct list_head *head)
+{
+	list_del(entry);
+	list_add_tail(entry, head);
 }
 
 static inline int

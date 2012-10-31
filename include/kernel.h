@@ -20,6 +20,6 @@
 	(type*)((uintptr_t)__mptr - offsetof(type, member));	\
 })
 
-#define ARRAY_SIZE(arr)	(sizeof(arr)/sizeof(arr[0]))
+#define ARRAY_SIZE(arr)	(sizeof(arr)/sizeof((arr)[0]))
 
 #endif	/* __KERNEL_H */

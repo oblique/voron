@@ -12,4 +12,16 @@ int irq_trigger_sgi(u32 irq_num);
 #define HW_IRQ(x)	(x + 32)
 #define NUM_OF_IRQ	160
 
+static inline void
+irq_enable(void)
+{
+	asm volatile("cpsie if" : : : "memory");
+}
+
+static inline void
+irq_disable(void)
+{
+	asm volatile("cpsid if" : : : "memory");
+}
+
 #endif	/* __IRQ_H */

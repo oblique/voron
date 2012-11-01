@@ -20,6 +20,8 @@ semaphore_init(semaphore_t *sem, u32 value)
 	sem->counter = value;
 }
 
+/* returns 1 if managed to decreased the counter
+ * returns 0 if not */
 static inline int
 semaphore_trywait(semaphore_t *sem)
 {
@@ -43,13 +45,15 @@ semaphore_trywait(semaphore_t *sem)
 		return 0;
 }
 
+/* blocks until it manage to decrease the counter */
 static inline void
 semaphore_wait(semaphore_t *sem)
 {
 	while (!semaphore_trywait(sem))
-		suspend_task((u32)sem);
+		suspend_task((u32)sem); /* sleep */
 }
 
+/* increases the counter and resumes other tasks */
 static inline void
 semaphore_done(semaphore_t *sem)
 {
@@ -66,9 +70,12 @@ semaphore_done(semaphore_t *sem)
 		: "v1", "v2", "memory", "cc"
 	);
 	dmb();
+	/* resume tasks that use the same semaphore */
 	resume_tasks((u32)sem);
 }
 
+
+/* mutex is a binary semaphore */
 #define MUTEX_INIT	{ SEMAPHORE_INIT(1) }
 
 static inline void
@@ -77,18 +84,22 @@ mutex_init(mutex_t *mut)
 	semaphore_init(&mut->sem, 1);
 }
 
+/* returns 1 if managed to lock mutex
+ * returns 0 if not */
 static inline int
 mutex_trylock(mutex_t *mut)
 {
 	return semaphore_trywait(&mut->sem);
 }
 
+/* blocks until it manage to lock mutex */
 static inline void
 mutex_lock(mutex_t *mut)
 {
 	semaphore_wait(&mut->sem);
 }
 
+/* unlock mutex */
 static inline void
 mutex_unlock(mutex_t *mut)
 {

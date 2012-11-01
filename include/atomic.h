@@ -25,8 +25,8 @@ __uatomic_read(uatomic_t *v)
 		 * register so GCC will not produce assembly code
 		 * like this one: ldrex r5, [r5] */
 		: "=&r" (r)
-		: "r" (v)
-		: "v1", "memory"
+		: "r" (&v->counter)
+		: "v1", "memory", "cc"
 	);
 	return r;
 }
@@ -41,8 +41,8 @@ uatomic_set(uatomic_t *v, u32 i)
 		"teq v1, #0		\n\t"
 		"bne 1b			\n\t"
 		:
-		: "r" (i), "r" (v)
-		: "v1", "memory"
+		: "r" (i), "r" (&v->counter)
+		: "v1", "memory", "cc"
 	);
 }
 
@@ -57,8 +57,8 @@ uatomic_add(u32 i, uatomic_t *v)
 		"teq v2, #0		\n\t"
 		"bne 1b			\n\t"
 		:
-		: "r" (i), "r" (v)
-		: "v1", "v2", "memory"
+		: "r" (i), "r" (&v->counter)
+		: "v1", "v2", "memory", "cc"
 	);
 }
 
@@ -74,8 +74,8 @@ __uatomic_add_return(u32 i, uatomic_t *v)
 		"teq v1, #0		\n\t"
 		"bne 1b			\n\t"
 		: "=&r" (r)
-		: "r" (i), "r" (v)
-		: "v1", "memory"
+		: "r" (i), "r" (&v->counter)
+		: "v1", "memory", "cc"
 	);
 	return r;
 }

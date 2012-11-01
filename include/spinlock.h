@@ -23,8 +23,8 @@ spinlock_lock(spinlock_t *sl)
 		"teq v1, #0		\n\t"
 		"bne 1b			\n\t"
 		:
-		: "r" (sl), "r" (0x80000000)
-		: "v1", "memory"
+		: "r" (&sl->lock), "r" (0x80000000)
+		: "v1", "memory", "cc"
 	);
 	dmb();
 }
@@ -36,7 +36,7 @@ spinlock_unlock(spinlock_t *sl)
 	asm volatile (
 		"str %1, [%0]"
 		:
-		: "r" (sl), "r" (0)
+		: "r" (&sl->lock), "r" (0)
 		: "memory"
 	);
 	dsb();
@@ -55,8 +55,8 @@ spinlock_trylock(spinlock_t *sl)
 		"teq %0, #0		\n\t"
 		"strexeq %0, %2, [%1]	\n\t"
 		: "=&r" (tmp)
-		: "r" (sl), "r" (0x80000000)
-		: "memory"
+		: "r" (&sl->lock), "r" (0x80000000)
+		: "memory", "cc"
 	);
 
 	if (tmp == 0) {

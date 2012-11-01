@@ -27,7 +27,7 @@ struct task_struct {
 	task_state_t state;
 	sleep_reason_t sleep_reason;
 	u32 sleep_chan;
-	int scheduled;
+	volatile int scheduled;
 	struct regs regs;
 	struct list_head list;
 	void *stack_alloc;

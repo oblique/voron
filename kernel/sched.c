@@ -199,6 +199,17 @@ suspend_task(u32 channel)
 }
 
 void
+suspend_task_no_schedule(u32 channel)
+{
+	irq_disable();
+	current->sleep_chan = channel;
+	current->sleep_reason = SLEEPR_SUSPEND;
+	current->state = TASK_SLEEPING;
+	irq_enable();
+	/* caller *must* run schedule() */
+}
+
+void
 resume_tasks(u32 channel)
 {
 	struct list_head *iter, *n;

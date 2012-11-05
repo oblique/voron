@@ -50,6 +50,7 @@ void msleep(u32 milliseconds);
 int kthread_create(void (*routine)(void *), void *arg);
 void schedule(void);
 void suspend_task(u32 channel);
+void suspend_task_no_schedule(u32 channel);
 void resume_tasks(u32 channel);
 
 #endif	/* __SCHED_H */

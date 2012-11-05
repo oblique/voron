@@ -190,10 +190,11 @@ sched(struct regs *regs)
 void
 suspend_task(u32 channel)
 {
+	irq_disable();
 	current->sleep_chan = channel;
 	current->sleep_reason = SLEEPR_SUSPEND;
-	dmb();
 	current->state = TASK_SLEEPING;
+	irq_enable();
 	schedule();
 }
 
@@ -220,10 +221,11 @@ resume_tasks(u32 channel)
 void
 sleep(u32 seconds)
 {
+	irq_disable();
 	current->wakeup_ms = uatomic_read(&ms_counter) + seconds * 1000;
 	current->sleep_reason = SLEEPR_SLEEP;
-	dmb();
 	current->state = TASK_SLEEPING;
+	irq_enable();
 	/* force schedule */
 	schedule();
 }
@@ -231,14 +233,15 @@ sleep(u32 seconds)
 void
 msleep(u32 milliseconds)
 {
+	irq_disable();
 	/* TODO: if ms is smaller than SCHED_INT_MS
 	 * do a loop and don't schedule */
 	if (milliseconds < SCHED_INT_MS)
 		milliseconds = SCHED_INT_MS;
 	current->wakeup_ms = uatomic_read(&ms_counter) + milliseconds;
 	current->sleep_reason = SLEEPR_SLEEP;
-	dmb();
 	current->state = TASK_SLEEPING;
+	irq_enable();
 	/* force schedule */
 	schedule();
 }

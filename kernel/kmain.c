@@ -18,6 +18,7 @@ thread_func(void *arg)
 		msleep(500);
 		i++;
 		if (i == 20 * n) {
+			i = 0;
 			semaphore_done(&sem);
 			kprintf("thread %d released semaphore\n", n);
 		}

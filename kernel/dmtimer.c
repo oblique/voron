@@ -100,65 +100,67 @@ static void
 dmtimer_irq_callback(u32 irq_num, struct regs *regs)
 {
 	u32 val;
-	int id;
+	int id, idx;
 
 	if (irq_num < HW_IRQ(37) || irq_num > HW_IRQ(47))
 		return;
 
-	id = irq_num - HW_IRQ(37);
+	idx = irq_num - HW_IRQ(37);
+	id = idx + 1;
 
-	if (dmtimers[id].mem == NULL)
+	if (dmtimers[idx].mem == NULL)
 		return;
 
 	/* read type of event */
-	if (dmtimers[id].flags & DMT_1MS)
-		val = readl(&dmtimers[id].dmt_1ms->tisr);
+	if (dmtimers[idx].flags & DMT_1MS)
+		val = readl(&dmtimers[idx].dmt_1ms->tisr);
 	else
-		val = readl(&dmtimers[id].dmt->irqstatus);
+		val = readl(&dmtimers[idx].dmt->irqstatus);
 
-	if (dmtimers[id].callback_func)
-		dmtimers[id].callback_func(id + 1, regs);
+	if (dmtimers[idx].callback_func)
+		dmtimers[idx].callback_func(id, regs);
 
 	/* clear event by writing 1 to the bits */
-	if (dmtimers[id].flags & DMT_1MS)
-		writel(val, &dmtimers[id].dmt_1ms->tisr);
+	if (dmtimers[idx].flags & DMT_1MS)
+		writel(val, &dmtimers[idx].dmt_1ms->tisr);
 	else
-		writel(val, &dmtimers[id].dmt->irqstatus);
+		writel(val, &dmtimers[idx].dmt->irqstatus);
 }
 
 static int
 reset_timer(int id)
 {
 	u32 val;
+	int idx;
 
 	if (id <= 0 || id > 11)
 		return -EINVAL;
 
-	id--;
+	idx = id - 1;
 
 	/* not implemented yet */
-	if (dmtimers[id].mem == NULL)
+	if (dmtimers[idx].mem == NULL)
 		return -ENOSYS;
 
-	if (dmtimers[id].flags & DMT_1MS) {
+	if (dmtimers[idx].flags & DMT_1MS) {
 		/* request reset */
-		writel(DMT_1MS_TIOCP_SOFTRESET, &dmtimers[id].dmt_1ms->tiocp_1ms_cfg);
+		writel(DMT_1MS_TIOCP_SOFTRESET, &dmtimers[idx].dmt_1ms->tiocp_1ms_cfg);
 		/* wait until reset is done */
-		while (!(readl(&dmtimers[id].dmt_1ms->tistat) & DMT_1MS_TISTAT_RESETDONE))
+		while (!(readl(&dmtimers[idx].dmt_1ms->tistat) & DMT_1MS_TISTAT_RESETDONE))
 			;
 	} else {
 		/* request reset */
-		writel(DMT_TIOCP_SOFTRESET, &dmtimers[id].dmt->tiocp_cfg);
+		writel(DMT_TIOCP_SOFTRESET, &dmtimers[idx].dmt->tiocp_cfg);
 		/* wait until reset is done */
-		while (readl(&dmtimers[id].dmt->tiocp_cfg) & DMT_TIOCP_SOFTRESET)
+		while (readl(&dmtimers[idx].dmt->tiocp_cfg) & DMT_TIOCP_SOFTRESET)
 			;
 	}
 
 	/* enable 32KHz clock */
-	if (dmtimers[id].cm2r) {
-		val = readl(dmtimers[id].cm2r);
+	if (dmtimers[idx].cm2r) {
+		val = readl(dmtimers[idx].cm2r);
 		val |= CM2_CLKSEL;
-		writel(val, dmtimers[id].cm2r);
+		writel(val, dmtimers[idx].cm2r);
 	}
 
 	return 0;
@@ -167,20 +169,22 @@ reset_timer(int id)
 int
 dmtimer_trigger(int id)
 {
+	int idx;
+
 	if (id <= 0 || id > 11)
 		return -EINVAL;
 
-	id--;
+	idx = id - 1;
 
 	/* not implemented yet */
-	if (dmtimers[id].mem == NULL)
+	if (dmtimers[idx].mem == NULL)
 		return -ENOSYS;
 
 	/* manually overflow the timer */
-	if (dmtimers[id].flags & DMT_1MS)
-		writel(0xffffffff, &dmtimers[id].dmt_1ms->tcrr);
+	if (dmtimers[idx].flags & DMT_1MS)
+		writel(0xffffffff, &dmtimers[idx].dmt_1ms->tcrr);
 	else
-		writel(0xffffffff, &dmtimers[id].dmt->tcrr);
+		writel(0xffffffff, &dmtimers[idx].dmt->tcrr);
 
 	return 0;
 }
@@ -188,56 +192,57 @@ dmtimer_trigger(int id)
 int
 dmtimer_register(int id, dmtimer_callback_func func, u32 ms)
 {
-	int ret;
+	int ret, idx;
 	u32 val;
 
 	if (id <= 0 || id > 11 || ms == 0 || func == NULL)
 		return -EINVAL;
 
+	idx = id - 1;
+
 	/* not implemented yet */
-	if (dmtimers[id - 1].mem == NULL)
+	if (dmtimers[idx].mem == NULL)
 		return -ENOSYS;
 
 	ret = reset_timer(id);
 	if (ret)
 		return ret;
 
-	id--;
-	ret = irq_register(HW_IRQ(37) + id, dmtimer_irq_callback);
+	ret = irq_register(HW_IRQ(37) + idx, dmtimer_irq_callback);
 	if (ret)
 		return ret;
-	dmtimers[id].callback_func = func;
+	dmtimers[idx].callback_func = func;
 
-	if (dmtimers[id].flags & DMT_1MS) {
+	if (dmtimers[idx].flags & DMT_1MS) {
 		/* enable start-idle */
-		writel(DMT_1MS_TIOCP_SMARTIDLE, &dmtimers[id].dmt_1ms->tiocp_1ms_cfg);
+		writel(DMT_1MS_TIOCP_SMARTIDLE, &dmtimers[idx].dmt_1ms->tiocp_1ms_cfg);
 
 		/* set milliseconds */
 		val = 0xffffffff;
 		val -= ms * 32;
-		writel(val, &dmtimers[id].dmt_1ms->tldr);
+		writel(val, &dmtimers[idx].dmt_1ms->tldr);
 
 		/* writing to TTGR causes TCRR to be loaded from TLDR */
-		writel(1, &dmtimers[id].dmt_1ms->ttgr);
+		writel(1, &dmtimers[idx].dmt_1ms->ttgr);
 		/* enable overflow interrupt */
-		writel(DMT_OVF_ENA_FLAG, &dmtimers[id].dmt_1ms->tier);
+		writel(DMT_OVF_ENA_FLAG, &dmtimers[idx].dmt_1ms->tier);
 		/* start timer and enable autoreload */
-		writel(DMT_TCLR_ST | DMT_TCLR_AR, &dmtimers[id].dmt_1ms->tclr);
+		writel(DMT_TCLR_ST | DMT_TCLR_AR, &dmtimers[idx].dmt_1ms->tclr);
 	} else {
 		/* enable start-idle */
-		writel(DMT_TIOCP_SMARTIDLE, &dmtimers[id].dmt->tiocp_cfg);
+		writel(DMT_TIOCP_SMARTIDLE, &dmtimers[idx].dmt->tiocp_cfg);
 
 		/* set milliseconds */
 		val = 0xffffffff;
 		val -= ms * 32;
-		writel(val, &dmtimers[id].dmt->tldr);
+		writel(val, &dmtimers[idx].dmt->tldr);
 
 		/* writing to TTGR causes TCRR to be loaded from TLDR */
-		writel(1, &dmtimers[id].dmt->ttgr);
+		writel(1, &dmtimers[idx].dmt->ttgr);
 		/* enable overflow interrupt */
-		writel(DMT_OVF_ENA_FLAG, &dmtimers[id].dmt->irqenable_set);
+		writel(DMT_OVF_ENA_FLAG, &dmtimers[idx].dmt->irqenable_set);
 		/* start timer and enable autoreload */
-		writel(DMT_TCLR_ST | DMT_TCLR_AR, &dmtimers[id].dmt->tclr);
+		writel(DMT_TCLR_ST | DMT_TCLR_AR, &dmtimers[idx].dmt->tclr);
 	}
 
 	return 0;

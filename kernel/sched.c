@@ -12,6 +12,7 @@ struct task_struct *curr_task = NULL;
 static struct list_head task_list_head;
 static struct list_head ht_sleep[MAX_HASH_ENT];
 static uatomic_t ms_counter = UATOMIC_INIT(0);
+static int __sched_enabled = 0;
 
 static pid_t
 get_new_pid(void)
@@ -36,7 +37,6 @@ static void
 task_remove(void)
 {
 	current->state = TASK_TERMINATE;
-	/* force schedule */
 	schedule();
 }
 
@@ -74,18 +74,16 @@ kthread_create(void (*routine)(void *), void *arg)
 	task->regs.cpsr = CPS_SYS;
 
 	/* add it to task list of the scheduler */
-	irq_disable();
-	list_add(&task->list, &task_list_head);
-	irq_enable();
-
-	/* force schedule if it's the only task */
-	if (list_is_singular(&task_list_head))
-		schedule();
+	if (sched_is_enabled()) {
+		sched_disable();
+		list_add(&task->list, &task_list_head);
+		sched_enable();
+	} else
+		list_add(&task->list, &task_list_head);
 
 	return 0;
 }
 
-/* force schedule */
 void
 schedule(void)
 {
@@ -187,26 +185,52 @@ sched(struct regs *regs)
 	__switch_to(regs, new_curr);
 }
 
+
+void
+sched_enable()
+{
+	u32 flags = irq_get_flags();
+	irq_disable();
+	writel(1, &__sched_enabled);
+	irq_set_flags(flags);
+}
+
+void
+sched_disable()
+{
+	u32 flags = irq_get_flags();
+	irq_disable();
+	writel(0, &__sched_enabled);
+	irq_set_flags(flags);
+}
+
+int
+sched_is_enabled()
+{
+	return readl(&__sched_enabled);
+}
+
 void
 suspend_task(u32 channel)
 {
-	irq_disable();
+	sched_disable();
 	current->sleep_chan = channel;
 	current->sleep_reason = SLEEPR_SUSPEND;
 	current->state = TASK_SLEEPING;
-	irq_enable();
+	sched_enable();
 	schedule();
 }
 
 void
 suspend_task_no_schedule(u32 channel)
 {
-	irq_disable();
+	/* caller *must* call sched_disable()
+	 * before this function */
 	current->sleep_chan = channel;
 	current->sleep_reason = SLEEPR_SUSPEND;
 	current->state = TASK_SLEEPING;
-	irq_enable();
-	/* caller *must* run schedule() */
+	/* caller *must* call sched_enable()
+	 * and then schedule() after this function */
 }
 
 void
@@ -214,17 +238,20 @@ resume_tasks(u32 channel)
 {
 	struct list_head *iter, *n;
 	struct task_struct *task;
-	int i;
+	int i, sched_e;
 
 	i = hash_chan(channel) % MAX_HASH_ENT;
 	list_for_each_safe(iter, n, &ht_sleep[i]) {
 		task = list_entry(iter, struct task_struct, list);
 		if (task->sleep_chan == channel) {
 			task->state = TASK_RUNNABLE;
-			irq_disable();
+			sched_e = sched_is_enabled();
+			if (sched_e)
+				sched_disable();
 			list_del(iter);
 			list_add(iter, &task_list_head);
-			irq_enable();
+			if (sched_e)
+				sched_enable();
 		}
 	}
 }
@@ -232,19 +259,19 @@ resume_tasks(u32 channel)
 void
 sleep(u32 seconds)
 {
-	irq_disable();
+	sched_disable();
 	current->wakeup_ms = uatomic_read(&ms_counter) + seconds * 1000;
 	current->sleep_reason = SLEEPR_SLEEP;
 	current->state = TASK_SLEEPING;
-	irq_enable();
-	/* force schedule */
+	sched_enable();
+	/* schedule */
 	schedule();
 }
 
 void
 msleep(u32 milliseconds)
 {
-	irq_disable();
+	sched_disable();
 	/* TODO: if ms is smaller than SCHED_INT_MS
 	 * do a loop and don't schedule */
 	if (milliseconds < SCHED_INT_MS)
@@ -252,8 +279,7 @@ msleep(u32 milliseconds)
 	current->wakeup_ms = uatomic_read(&ms_counter) + milliseconds;
 	current->sleep_reason = SLEEPR_SLEEP;
 	current->state = TASK_SLEEPING;
-	irq_enable();
-	/* force schedule */
+	sched_enable();
 	schedule();
 }
 
@@ -261,13 +287,15 @@ static void
 sched_handler(__unused int timer_id, struct regs *regs)
 {
 	uatomic_add(SCHED_INT_MS, &ms_counter);
-	sched(regs);
+	if (sched_is_enabled())
+		sched(regs);
 }
 
 static void
-force_sched_handler(__unused u32 irq_num, struct regs *regs)
+manual_sched_handler(__unused u32 irq_num, struct regs *regs)
 {
-	sched(regs);
+	if (sched_is_enabled())
+		sched(regs);
 }
 
 __attribute__((__constructor__))
@@ -280,6 +308,7 @@ sched_init(void)
 	for (i = 0; i < ARRAY_SIZE(ht_sleep); i++)
 		INIT_LIST_HEAD(&ht_sleep[i]);
 
-	irq_register(1, force_sched_handler);
+	irq_register(1, manual_sched_handler);
 	dmtimer_register(1, sched_handler, SCHED_INT_MS);
+	sched_enable();
 }

@@ -1,6 +1,7 @@
 #ifndef __SEMAPHORE_H
 #define __SEMAPHORE_H
 
+#include <irq.h>
 #include <io.h>
 #include <spinlock.h>
 #include <sched.h>
@@ -45,8 +46,10 @@ semaphore_wait(semaphore_t *sem)
 	while (1) {
 		spinlock_lock(&sem->lock);
 		if (sem->counter == 0) {
+			sched_disable();
 			suspend_task_no_schedule((u32)sem);
 			spinlock_unlock(&sem->lock);
+			sched_enable();
 			schedule();
 			continue;
 		}

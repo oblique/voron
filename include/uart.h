@@ -4,6 +4,7 @@
 #include <inttypes.h>
 
 /* TRM p.4459 */
+#define TX_FIFO_FULL	(1<<0)
 #define TX_FIFO_E	(1<<5)
 #define RX_FIFO_E	(1<<0)
 #define RHR_IT		(1<<0)

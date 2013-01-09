@@ -24,13 +24,18 @@ int
 rs232_putchar(int c)
 {
 	if (c == '\n') {
-		while ((readl(&uart->lsr) & TX_FIFO_E) == 0)
-			;
+		if (readl(&uart->ssr) & TX_FIFO_FULL) {
+			while ((readl(&uart->lsr) & TX_FIFO_E) == 0)
+				;
+		}
 		writel('\r', &uart->thr);
 	}
-	/* while UART TX FIFO is not empty */
-	while ((readl(&uart->lsr) & TX_FIFO_E) == 0)
-		;
+	/* if UART TX FIFO is full */
+	if (readl(&uart->ssr) & TX_FIFO_FULL) {
+		/* while UART TX FIFO is not empty */
+		while ((readl(&uart->lsr) & TX_FIFO_E) == 0)
+			;
+	}
 	/* write the character */
 	writel(c, &uart->thr);
 	return c;

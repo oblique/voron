@@ -16,7 +16,7 @@ spinlock_lock(spinlock_t *sl)
 		"1:			\n\t"
 		"ldrex v1, [%0]		\n\t"
 		"teq v1, #0		\n\t"
-		/* wait for event if it's lock */
+		/* wait for event if it's locked */
 		"wfene			\n\t"
 		"bne 1b			\n\t"
 		"strex v1, %1, [%0]	\n\t"

@@ -98,6 +98,13 @@ mutex_lock(mutex_t *mut)
 static inline void
 mutex_unlock(mutex_t *mut)
 {
+	spinlock_lock(&mut->sem.lock);
+	/* if it's already unlocked, do nothing */
+	if (mut->sem.counter == 1) {
+		spinlock_unlock(&mut->sem.lock);
+		return;
+	}
+	spinlock_unlock(&mut->sem.lock);
 	semaphore_done(&mut->sem);
 }
 

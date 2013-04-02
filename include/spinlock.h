@@ -67,7 +67,7 @@ spinlock_trylock(spinlock_t *sl)
 }
 
 static inline void
-INIT_SPINLOCK(spinlock_t *sl)
+spinlock_init(spinlock_t *sl)
 {
 	sl->lock = 0;
 }

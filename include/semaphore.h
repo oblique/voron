@@ -21,7 +21,7 @@ static inline void
 semaphore_init(semaphore_t *sem, u32 value)
 {
 	sem->counter = value;
-	INIT_SPINLOCK(&sem->lock);
+	spinlock_init(&sem->lock);
 }
 
 /* returns 1 if managed to decreased the counter

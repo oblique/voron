@@ -10,6 +10,8 @@
 /* instruction synchronization barrier */
 #define isb()	asm volatile("isb" : : : "memory")
 
+/* compiler barrier */
+#define cb()	asm volatile("" : : : "memory");
 /* memory barrier */
 #define mb()	dsb()
 /* read memory barrier */

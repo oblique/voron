@@ -33,12 +33,7 @@ static inline void
 spinlock_unlock(spinlock_t *sl)
 {
 	dmb();
-	asm volatile (
-		"str %1, [%0]"
-		:
-		: "r" (&sl->lock), "r" (0)
-		: "memory"
-	);
+	sl->lock = 0;
 	dsb();
 	/* signal event */
 	asm volatile("sev" : : : "memory");

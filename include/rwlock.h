@@ -4,16 +4,16 @@
 #include <inttypes.h>
 #include <semaphore.h>
 
-/* readers-writer lock
- * implemented with 'Passing the Baton' technique
+/* Readers-Writer lock
+ * Implemented with 'Passing the Baton' locking technique.
  *
- * rules:
- * 1) if we have an awakened writer or writers in the queue then
- *    a new reader will be added in readers' queue.
- * 2) if all awakened readers are done then we awake a writer,
- *    even if we have readers in the queue.
- * 3) if the awakened writer and all writers in the queue are done
- *    then we awake all the readers. */
+ * Priority rules:
+ * 1) if we have an awakened writer or writers in the waiting queue
+ *    then a new reader will be added in readers' waiting queue.
+ * 2) if all awakened readers are released then we awake a writer,
+ *    even if readers are waiting in the queue.
+ * 3) if the awakened writer and all writers in the waiting queue are
+ *    released then we awake all the readers. */
 typedef struct {
 	mutex_t lock;
 	mutex_t writer_wait;
@@ -127,20 +127,20 @@ rwlock_unlock(rwlock_t *rwl)
 {
 	mutex_lock(&rwl->lock);
 
-	/* a reader is done */
+	/* release reader */
 	if (rwl->nr_readers > 0) {
 		rwl->nr_readers--;
-	/* a writer is done */
+	/* release writer */
 	} else if (rwl->nr_writers > 0) {
 		rwl->nr_writers--;
 	}
 
-	/* if all awakened readers are done and we have writers in the queue
+	/* if all awakened readers are released and we have writers in the queue
 	 * then awake a writer */
 	if (rwl->nr_readers == 0 && rwl->nr_writers_queue > 0) {
 		rwl->nr_writers_queue--;
 		mutex_unlock(&rwl->writer_wait);
-	/* if the awakened writer and all writers from the queue are done
+	/* if the awakened writer and all writers from the queue are released
 	 * then awake a reader */
 	} else if (rwl->nr_writers == 0 && rwl->nr_writers_queue == 0 &&
 		   rwl->nr_readers_queue > 0) {

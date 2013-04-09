@@ -11,10 +11,6 @@ typedef struct {
 	spinlock_t lock;
 } semaphore_t;
 
-typedef struct {
-	semaphore_t sem;
-} mutex_t;
-
 #define SEMAPHORE_INIT(v)	{ (v), SPINLOCK_INIT }
 
 static inline void
@@ -71,6 +67,10 @@ semaphore_done(semaphore_t *sem)
 
 
 /* mutex is a binary semaphore */
+typedef struct {
+	semaphore_t sem;
+} mutex_t;
+
 #define MUTEX_INIT		{ SEMAPHORE_INIT(1) }
 #define MUTEX_INIT_LOCKED	{ SEMAPHORE_INIT(0) }
 

@@ -64,7 +64,6 @@ set_bitmap_bits(uint_t start_bit, uint_t n, int flag)
 	return 0;
 }
 
-void *palloc(uint_t n);
 void
 mm_init()
 {

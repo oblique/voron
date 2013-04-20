@@ -15,9 +15,10 @@ mmu_init(void)
 
 	asm volatile (
 		/* invalidate TLB
-		 * v1 is ignored
-		 */
+		 * v1 is ignored */
 		"mcr p15, 0, v1, c8, c7, 0	\n\t"
+		/* completes the TLB invalidation */
+		"dsb				\n\t"
 		/* set TTBCR */
 		"mov v1, #0			\n\t"
 		"mcr p15, 0, v1, c2, c0, 2	\n\t"
@@ -29,6 +30,8 @@ mmu_init(void)
 		"mcr p15, 0, v1, c3, c0, 0	\n\t"
 		/* invalidate TLB */
 		"mcr p15, 0, v1, c8, c7, 0	\n\t"
+		/* completes the TLB invalidation */
+		"dsb				\n\t"
 		/* enable AFE */
 		"mrc p15, 0, v1, c1, c0, 0	\n\t"
 		"orr v1, v1, #(1 << 29)		\n\t"
@@ -43,13 +46,14 @@ mmu_enable(void)
 	asm volatile (
 		/* invalidate TLB */
 		"mcr p15, 0, v1, c8, c7, 0	\n\t"
+		/* completes the TLB invalidation */
+		"dsb				\n\t"
 		/* enable MMU */
 		"mrc p15, 0, v1, c1, c0, 0	\n\t"
 		"orr v1, v1, #1			\n\t"
 		"mcr p15, 0, v1, c1, c0, 0	\n\t"
 		: : : "v1"
 	);
-	dsb();
 }
 
 void
@@ -185,7 +189,8 @@ mmu_map_page(void *phys, void *virt, uint_t npages, mmu_ap_t perms)
 	}
 
 	/* invalidate TLB */
-	asm volatile("mcr p15, 0, v1, c8, c7, 0"
+	asm volatile("mcr p15, 0, v1, c8, c7, 0		\n\t"
+		     "dsb				\n\t"
 		     : : : "v1", "memory");
 
 	return 0;

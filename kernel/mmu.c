@@ -28,14 +28,14 @@ mmu_init(void)
 		/* set DACR */
 		"ldr v1, =0x55555555		\n\t"
 		"mcr p15, 0, v1, c3, c0, 0	\n\t"
+		/* make sure that SCTLR.AFE is disabled */
+		"mrc p15, 0, v1, c1, c0, 0	\n\t"
+		"bic v1, v1, #(1 << 29)		\n\t"
+		"mcr p15, 0, v1, c1, c0, 0	\n\t"
 		/* invalidate TLB */
 		"mcr p15, 0, v1, c8, c7, 0	\n\t"
 		/* completes the TLB invalidation */
 		"dsb				\n\t"
-		/* enable AFE */
-		"mrc p15, 0, v1, c1, c0, 0	\n\t"
-		"orr v1, v1, #(1 << 29)		\n\t"
-		"mcr p15, 0, v1, c1, c0, 0	\n\t"
 		: : : "v1", "memory"
 	);
 }

@@ -203,10 +203,10 @@ kmmap(void *virt, uint_t npages, mmu_ap_t perms)
 	uintptr_t virt_a;
 	void *pa;
 
-	if (npages == 0)
-		return -EINVAL;
-
 	virt_a = (uintptr_t)virt;
+
+	if (npages == 0 ||  virt_a & (PAGE_SIZE - 1))
+		return -EINVAL;
 
 	/* overflow */
 	if (virt_a + npages * PAGE_SIZE < virt_a)

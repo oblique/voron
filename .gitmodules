@@ -1,0 +1,3 @@
+[submodule "usbboot/omap4boot"]
+	path = usbboot/omap4boot
+	url = git://github.com/swetland/omap4boot.git

@@ -1,0 +1,25 @@
+diff --git a/Makefile b/Makefile
+index 5d4c674..800ca9d 100644
+--- a/Makefile
++++ b/Makefile
+@@ -85,7 +85,6 @@ M_OBJS += libc/printf.o
+ M_OBJS += libc/strlen.o libc/memset.o libc/memcpy.o
+ M_OBJS += libc/raise.o
+ M_OBJS += aboot.o 
+-M_OBJS += trusted.o
+ M_OBJS += boot.o
+ M_OBJS += misc.o
+ M_LIBS := $(TARGET_LIBGCC)
+diff --git a/aboot.c b/aboot.c
+index 6c12694..126e40a 100644
+--- a/aboot.c
++++ b/aboot.c
+@@ -34,7 +34,7 @@
+ 
+ #define WITH_MEMORY_TEST	0
+ #define WITH_FLASH_BOOT		0
+-#define WITH_SIGNATURE_CHECK	1
++#define WITH_SIGNATURE_CHECK	0
+ 
+ #if WITH_MEMORY_TEST
+ void memtest(void *x, unsigned count) {

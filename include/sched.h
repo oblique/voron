@@ -34,16 +34,7 @@ struct task_struct {
 	u32 wakeup_ms;
 };
 
-
-extern struct task_struct *curr_task;
-
-static inline struct task_struct **
-current_task(void)
-{
-	return &curr_task;
-}
-
-#define current (*current_task())
+extern struct task_struct *current;
 
 void sleep(u32 seconds);
 void msleep(u32 milliseconds);

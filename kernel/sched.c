@@ -8,7 +8,7 @@
 
 #define MAX_HASH_ENT	64
 
-struct task_struct *curr_task = NULL;
+struct task_struct *current = NULL;
 static struct list_head task_list_head;
 static struct list_head ht_sleep[MAX_HASH_ENT];
 static uatomic_t ms_counter = UATOMIC_INIT(0);

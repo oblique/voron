@@ -43,6 +43,13 @@ uImage: kernel.bin
 	@echo -e "  AS\t$<"
 	@$(CC) $(ASFLAGS) -c -o $@ $<
 
+bootloader:
+	git submodule init
+	git submodule update
+	make -C boot/u-boot-linaro-stable CROSS_COMPILE=$(CROSS_COMPILE) omap4_panda_config
+	make -C boot/u-boot-linaro-stable CROSS_COMPILE=$(CROSS_COMPILE)
+	cd boot && mkimage -A arm -T script -C none -a 0 -e 0 -n "Panda SD Boot" -d boot_sd.conf boot.scr
+
 clean:
 	@rm -f $(KERNEL_OBJS) kernel.elf kernel.bin kernel.syms uImage voron.tar.gz
 

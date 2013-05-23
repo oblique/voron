@@ -7,7 +7,7 @@ fi
 [ $(basename ${PWD}) = "scripts" ] && cd ..
 
 if [ -z "$BIN" ]; then
-    BIN="${PWD}/usbbootImage"
+    BIN="${PWD}/kernel.bin"
 fi
 
 if [ ! -f "$BIN" ]; then

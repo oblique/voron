@@ -6,7 +6,7 @@ SECTIONS
 	_ram_start = 0x80000000;
 	_ram_end = 0xbfffffff;
 
-	.text 0x80000000 :
+	.text 0x82000000 :
 	{
 		_kernel_bin_start = .;
 		kernel/start.o (.text)
@@ -51,7 +51,6 @@ SECTIONS
 	_irq_stack_top = .;
 	. = . + 0x2000;
 	_abort_stack_top = .;
-
 
 	_kernel_bin_end = .;
 }

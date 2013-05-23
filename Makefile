@@ -20,7 +20,7 @@ KERNEL_SRCS = $(KERNEL_SRCS_C) $(KERNEL_SRCS_S)
 KERNEL_OBJS = $(KERNEL_SRCS_C:%.c=%.o) $(KERNEL_SRCS_S:%.S=%.o)
 HDRS = $(wildcard include/*.h)
 
-all: uImage usbbootImage kernel.syms
+all: uImage kernel.syms
 
 kernel.elf: $(KERNEL_OBJS) kernel/linker.ld
 	@echo -e "  LD\t$@"
@@ -33,20 +33,7 @@ kernel.syms: kernel.elf
 	@$(NM) $< > $@
 
 uImage: kernel.bin
-	@mkimage -A arm -T kernel -C none -a 0x80000000 -e 0x80000000 -n Voron -d $< $@
-
-usbbootImage: usbboot/usbboot.o usbboot/usbboot.ld usbboot/kernel_image.o
-	@echo "Creating $@"
-	@echo "Entry Point: 0x82000000"
-	@echo "Load Image:  0x80000000"
-	@$(CC) -T usbboot/usbboot.ld -nostdlib -nostdinc -nodefaultlibs -nostartfiles \
-	-fno-builtin -o __$@ $<
-	@$(OBJCOPY) __$@ -O binary $@
-	@rm -f __$@
-	@echo "Done"
-
-usbboot/kernel_image.o: kernel.bin
-	@$(LD) -r -b binary -o $@ $<
+	@mkimage -A arm -T kernel -C none -a 0x82000000 -e 0x82000000 -n Voron -d $< $@
 
 %.o: %.c $(HDRS)
 	@echo -e "  CC\t$<"
@@ -57,8 +44,7 @@ usbboot/kernel_image.o: kernel.bin
 	@$(CC) $(ASFLAGS) -c -o $@ $<
 
 clean:
-	@rm -f $(KERNEL_OBJS) kernel.elf kernel.bin kernel.syms uImage usbbootImage \
-	usbboot/kernel_image.o usbboot/usbboot.o voron.tar.gz
+	@rm -f $(KERNEL_OBJS) kernel.elf kernel.bin kernel.syms uImage voron.tar.gz
 
 targz:
 	@git archive --format=tar.gz --prefix=voron/ -o voron.tar.gz HEAD

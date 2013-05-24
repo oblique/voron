@@ -17,7 +17,7 @@ fi
 
 if [ -z "$OMAP4BOOT_PATH" ]; then
     OMAP4BOOT_PATH="${PWD}/boot/omap4boot/out/panda"
-    if [ ! -f "${OMAP4BOOT_PATH}/boot" -o ! -f "${OMAP4BOOT_PATH}/aboot.bin" ]; then
+    if [ ! -f "${OMAP4BOOT_PATH}/usbboot" -o ! -f "${OMAP4BOOT_PATH}/aboot.bin" ]; then
         git submodule init || exit 1
         git submodule update || exit 1
         cd boot/omap4boot || exit 1

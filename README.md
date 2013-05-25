@@ -1,5 +1,6 @@
 Voron is an experimental ARM based operating system for PandaBoard.
 
+
 ## Features (until now)
 
 * Uniprocessor support only (for now)
@@ -17,7 +18,7 @@ Voron is an experimental ARM based operating system for PandaBoard.
 If you are not using an ARM architecture processor then you will need
 an ARM architecture toolchain, you can use `arm-none-eabi` from
 Sourcery CodeBench Lite. You will also need `uboot-mkimage`
-package. To compile it, run
+package. To compile voron, run
 
     make
 
@@ -39,7 +40,7 @@ mark it as boot. Then run (use `CROSS_COMPILE` if needed)
 
 After this you must copy `uImage`, `boot/boot.scr`,
 `boot/u-boot-linaro-stable/u-boot.bin` and `boot/u-boot-linaro-stable/MLO`
-in your SD card.
+in your SD card. Insert the SD card into your PandaBoard and you are ready.
 
 
 ## Boot via USB cable
@@ -52,3 +53,8 @@ Plug a USB cable at your PandaBoard and run
 ## Output
 
 I only use RS-232 Serial port for text output, so you will need `minicom`.
+
+
+## License
+
+I use FreeBSD license.

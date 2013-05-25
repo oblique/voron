@@ -10,3 +10,5 @@
 /uImage
 /voron.tar.gz
 /boot/boot.scr
+/boot/omap4boot
+/boot/u-boot-linaro-stable

@@ -16,13 +16,18 @@ if [ ! -f "$BIN" ]; then
 fi
 
 if [ -z "$OMAP4BOOT_PATH" ]; then
+    if [ ! -d "boot/omap4boot" ]; then
+	cd boot
+	git clone git://github.com/swetland/omap4boot.git
+	cd omap4boot
+	patch -p1 -i ../omap4boot_remove_signature_check.patch
+	cd ../..
+    fi
+
     OMAP4BOOT_PATH="${PWD}/boot/omap4boot/out/panda"
+
     if [ ! -f "${OMAP4BOOT_PATH}/usbboot" -o ! -f "${OMAP4BOOT_PATH}/aboot.bin" ]; then
-        git submodule init || exit 1
-        git submodule update || exit 1
-        cd boot/omap4boot || exit 1
-        git reset --hard
-        patch -p1 -i ../omap4boot_remove_signature_check.patch
+        cd boot/omap4boot
         if [ -z "$TOOLCHAIN" ]; then
             make TOOLCHAIN=arm-none-eabi-
         else

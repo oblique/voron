@@ -44,8 +44,8 @@ uImage: kernel.bin
 	@$(CC) $(ASFLAGS) -c -o $@ $<
 
 bootloader:
-	git submodule init
-	git submodule update
+	[ -d boot/u-boot-linaro-stable ] || (cd boot && \
+	    git clone git://git.linaro.org/boot/u-boot-linaro-stable.git)
 	make -C boot/u-boot-linaro-stable CROSS_COMPILE=$(CROSS_COMPILE) omap4_panda_config
 	make -C boot/u-boot-linaro-stable CROSS_COMPILE=$(CROSS_COMPILE)
 	cd boot && mkimage -A arm -T script -C none -a 0 -e 0 -n "Panda SD Boot" -d boot_sd.conf boot.scr

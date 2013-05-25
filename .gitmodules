@@ -1,6 +1,0 @@
-[submodule "boot/omap4boot"]
-	path = boot/omap4boot
-	url = git://github.com/swetland/omap4boot.git
-[submodule "boot/u-boot-linaro-stable"]
-	path = boot/u-boot-linaro-stable
-	url = git://git.linaro.org/boot/u-boot-linaro-stable.git

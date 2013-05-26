@@ -50,6 +50,9 @@ bootloader:
 	make -C boot/u-boot-linaro-stable CROSS_COMPILE=$(CROSS_COMPILE)
 	cd boot && mkimage -A arm -T script -C none -a 0 -e 0 -n "Panda SD Boot" -d boot_sd.conf boot.scr
 
+bootloader_clean:
+	@rm -rf boot/boot.scr boot/u-boot-linaro-stable boot/omap4boot
+
 clean:
 	@rm -f $(KERNEL_OBJS) kernel.elf kernel.bin kernel.syms uImage voron.tar.gz
 

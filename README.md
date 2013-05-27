@@ -52,7 +52,14 @@ Plug a USB cable at your PandaBoard and run
 
 ## Output
 
-I only use RS-232 Serial port for text output, so you will need `minicom`.
+I only use RS-232 Serial port for text output, so you will need `minicom`
+or `screen`. Run:
+
+    minicom -b 115200 -D /dev/ttyUSB0
+
+OR
+
+    screen /dev/ttyUSB0 115200
 
 
 ## License

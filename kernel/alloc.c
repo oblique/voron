@@ -126,6 +126,67 @@ kfree(void *addr)
 	spinlock_unlock(&alloclist_lock);
 }
 
+void *
+krealloc(void *addr, size_t size)
+{
+	void *p;
+	struct list_head *pos;
+	struct mem_chunk *memc;
+
+	if (!size && addr) {
+		kfree(addr);
+		return NULL;
+	}
+
+	if (addr) {
+		/* Lookup for the old base pointer `addr' if it is part of a
+		 * previous allocation */
+		spinlock_lock(&alloclist_lock);
+		list_for_each(pos, &alloclist) {
+			memc = list_entry(pos, struct mem_chunk, list);
+			if (addr == memc->start)
+				goto found;
+		}
+		spinlock_unlock(&alloclist_lock);
+	}
+
+	/* Allocate new space at a different base address */
+	p = kmalloc(size);
+	if (!p)
+		return NULL;
+
+	return p;
+found:
+	/* Are we shrinking the space?  If so just return the old `addr' */
+	if (size <= memc->size) {
+		spinlock_unlock(&alloclist_lock);
+		return addr;
+	}
+	spinlock_unlock(&alloclist_lock);
+
+	/* Allocate some space, copy over the old contents at `addr' and
+	 * free that space */
+	p = kmalloc(size);
+	if (!p)
+		return NULL;
+
+	memcpy(p, addr, memc->size);
+	kfree(addr);
+
+	return p;
+}
+
+void *
+kcalloc(size_t nmemb, size_t size)
+{
+	void *p;
+
+	p = kmalloc(size * nmemb);
+	if (!p)
+		return NULL;
+	memset(p, 0, size * nmemb);
+	return p;
+}
 
 void
 kdump(void)

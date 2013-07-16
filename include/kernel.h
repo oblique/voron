@@ -12,6 +12,7 @@
 #include <alloc.h>
 #include <debug.h>
 #include <atomic.h>
+#include <panic.h>
 
 #define __unused	__attribute__((__unused__))
 

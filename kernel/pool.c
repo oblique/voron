@@ -4,15 +4,15 @@
 #include <spinlock.h>
 #include <pool.h>
 
-struct arena {
-	arena_id id;
+struct item {
+	item_id id;
 	void *mem;
 	size_t siz;
 	int used;
 };
 
 struct pool {
-	struct arena *arena;
+	struct item *item;
 	size_t siz;
 };
 
@@ -27,7 +27,7 @@ pool_init(void)
 	pool = kmalloc(sizeof(struct pool));
 	if (!pool)
 		return NULL;
-	pool->arena = NULL;
+	pool->item = NULL;
 	pool->siz = 0;
 	return pool;
 }
@@ -35,73 +35,73 @@ pool_init(void)
 void
 pool_free(struct pool *pool)
 {
-	struct arena *arena;
+	struct item *item;
 	size_t i;
 
 	spinlock_lock(&pool_lock);
 	for (i = 0; i < pool->siz; i++) {
-		arena = &pool->arena[i];
-		kfree(arena->mem);
+		item = &pool->item[i];
+		kfree(item->mem);
 	}
-	kfree(pool->arena);
+	kfree(pool->item);
 	kfree(pool);
 	spinlock_unlock(&pool_lock);
 }
 
 void *
-arena_alloc(struct pool *pool, size_t n, arena_id id)
+item_alloc(struct pool *pool, size_t n, item_id id)
 {
-	struct arena *tmp;
-	struct arena *arena;
+	struct item *tmp;
+	struct item *item;
 	size_t i;
 
 	spinlock_lock(&pool_lock);
 	for (i = 0; i < pool->siz; i++) {
-		arena = &pool->arena[i];
-		if (arena->id == id) {
+		item = &pool->item[i];
+		if (item->id == id) {
 			if (ndebug > 0)
-				kprintf("Found possible unused arena:%d\n", arena->id);
-			if (!arena->used && arena->siz >= n) {
+				kprintf("Found possible unused item:%d\n", item->id);
+			if (!item->used && item->siz >= n) {
 				if (ndebug > 0)
-					kprintf("Found unused arena:%d of size %zu bytes\n",
-					       arena->id, arena->siz);
-				arena->used = 1;
+					kprintf("Found unused item:%d of size %zu bytes\n",
+						item->id, item->siz);
+				item->used = 1;
 				spinlock_unlock(&pool_lock);
-				return arena->mem;
+				return item->mem;
 			}
 		}
 	}
 
 	if (ndebug > 0)
-		kprintf("Allocating new arena:%d of size %zu bytes\n",
-		       id, n);
+		kprintf("Allocating new item:%d of size %zu bytes\n",
+			id, n);
 
-	tmp = krealloc(pool->arena, sizeof(struct arena) * (pool->siz + 1));
+	tmp = krealloc(pool->item, sizeof(struct item) * (pool->siz + 1));
 	if (!tmp)
 		panic("out of memory");
-	pool->arena = tmp;
-	arena = &pool->arena[pool->siz];
-	arena->id = id;
-	arena->mem = kmalloc(n);
-	if (!arena->mem)
+	pool->item = tmp;
+	item = &pool->item[pool->siz];
+	item->id = id;
+	item->mem = kmalloc(n);
+	if (!item->mem)
 		panic("out of memory");
-	arena->siz = n;
+	item->siz = n;
 	pool->siz++;
 	spinlock_unlock(&pool_lock);
-	return arena->mem;
+	return item->mem;
 }
 
 void
-arena_free(struct pool *pool, arena_id id)
+item_free(struct pool *pool, item_id id)
 {
-	struct arena *arena;
+	struct item *item;
 	size_t i;
 
 	spinlock_lock(&pool_lock);
 	for (i = 0; i < pool->siz; i++) {
-		arena = &pool->arena[i];
-		if (arena->id == id)
-			arena->used = 0;
+		item = &pool->item[i];
+		if (item->id == id)
+			item->used = 0;
 	}
 	spinlock_unlock(&pool_lock);
 }

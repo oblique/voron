@@ -113,7 +113,7 @@ item_free(struct pool *pool, item_id id)
 	for (i = 0; i < pool->siz; i++) {
 		item = &pool->item[i];
 		if (item->id == id)
-			item->state= ITEM_UNUSED;
+			item->state = ITEM_UNUSED;
 	}
 	spinlock_unlock(&pool_lock);
 }

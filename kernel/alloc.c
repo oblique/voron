@@ -197,13 +197,15 @@ kdump(void)
 	kprintf("alloc list\n");
 	list_for_each_safe(pos, tmp, &alloclist) {
 		memc = list_entry(pos, struct mem_chunk, list);
-		kprintf("%p (phys: %p): %p %p %d\n", pos, virt_to_phys(pos), memc, memc->start, memc->size);
+		kprintf("%p (phys: %p): %p %p %d\n", pos, virt_to_phys(pos),
+			memc, memc->start, memc->size);
 	}
 
 	kprintf("\nfree list\n");
 	list_for_each_safe(pos, tmp, &freelist) {
 		memc = list_entry(pos, struct mem_chunk, list);
-		kprintf("%p (phys: %p): %p %p %d\n", pos, virt_to_phys(pos), memc, memc->start, memc->size);
+		kprintf("%p (phys: %p): %p %p %d\n", pos, virt_to_phys(pos),
+			memc, memc->start, memc->size);
 	}
 }
 

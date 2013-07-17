@@ -4,11 +4,16 @@
 #include <spinlock.h>
 #include <pool.h>
 
+enum item_state {
+	ITEM_UNUSED,
+	ITEM_USED,
+};
+
 struct item {
 	item_id id;
 	void *mem;
 	size_t siz;
-	int used;
+	enum item_state state;
 };
 
 struct pool {
@@ -48,6 +53,9 @@ pool_free(struct pool *pool)
 	spinlock_unlock(&pool_lock);
 }
 
+/* Allocate an item in the pool of size `n' with `id'.
+ * If there is an unused item of sufficient size with the same
+ * `id' then it will be re-used. */
 void *
 item_alloc(struct pool *pool, size_t n, item_id id)
 {
@@ -61,11 +69,11 @@ item_alloc(struct pool *pool, size_t n, item_id id)
 		if (item->id == id) {
 			if (ndebug > 0)
 				kprintf("Found possible unused item:%d\n", item->id);
-			if (!item->used && item->siz >= n) {
+			if (item->state == ITEM_UNUSED && item->siz >= n) {
 				if (ndebug > 0)
 					kprintf("Found unused item:%d of size %zu bytes\n",
 						item->id, item->siz);
-				item->used = 1;
+				item->state = ITEM_USED;
 				spinlock_unlock(&pool_lock);
 				return item->mem;
 			}
@@ -86,11 +94,15 @@ item_alloc(struct pool *pool, size_t n, item_id id)
 	if (!item->mem)
 		panic("out of memory");
 	item->siz = n;
+	item->state = ITEM_USED;
 	pool->siz++;
 	spinlock_unlock(&pool_lock);
 	return item->mem;
 }
 
+/* Free all items with `id'.  This does not actually
+ * free the underlying memory, it just marks those items
+ * as unused. */
 void
 item_free(struct pool *pool, item_id id)
 {
@@ -101,7 +113,7 @@ item_free(struct pool *pool, item_id id)
 	for (i = 0; i < pool->siz; i++) {
 		item = &pool->item[i];
 		if (item->id == id)
-			item->used = 0;
+			item->state= ITEM_UNUSED;
 	}
 	spinlock_unlock(&pool_lock);
 }

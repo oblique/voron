@@ -1,0 +1,5 @@
+* kfifo
+* generic hash table implementation
+* stats system with hooks for number of context switches/memory allocations
+* slab allocator
+* enable caches

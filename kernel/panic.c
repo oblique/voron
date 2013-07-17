@@ -1,11 +1,12 @@
 #include <kernel.h>
+#include <irq.h>
 
 void
 panic(const char *fmt, ...)
 {
 	va_list ap;
 
-	/* TODO: Shut down interrupts */
+	irq_disable();
 	kprintf("~~~ kernel panic ~~~\n");
 	va_start(ap, fmt);
 	kvprintf(fmt, ap);

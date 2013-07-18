@@ -10,7 +10,6 @@ enum {
 	true = 1
 };
 
-
 #define offsetof(type, member) ((uintptr_t)&((type*)0)->member)
 
 #endif	/* __STDDEF_H */

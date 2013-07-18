@@ -12,7 +12,6 @@ vector_table_init:
 
 	bx lr
 
-
 .balign 32	@ the 5 least-significant bits of VBAR are reserved (i.e. 32 bytes alignment)
 vector_table:
 	ldr pc, =reset
@@ -24,7 +23,6 @@ vector_table:
 	ldr pc, =irq_ex
 	ldr pc, =fiq_ex
 .ltorg
-
 
 @@ save all the registers
 .macro SAVE_ALL_EX
@@ -68,14 +66,12 @@ vector_table:
 	add sp, sp, #4	      @ release the space we had for cpsr variable
 .endm
 
-
 reset:
 	b .
 
 
 undefined_insn:
 	movs pc, lr
-
 
 /* system call number is the swi number
  * if system call takes less than 7 arguments
@@ -101,7 +97,6 @@ swi_ex:
 	msr spsr, r6
 	ldmfd sp!, { r6 - r12, pc }^
 
-
 prefetch_abort:
 	@@ save registers
 	SAVE_ALL_EX
@@ -115,7 +110,6 @@ prefetch_abort:
 
 	b .		      @ freeze
 	@subs pc, lr, #4
-
 
 data_abort:
 	@@ save registers
@@ -131,7 +125,6 @@ data_abort:
 	b .		      @ freeze
 	@subs pc, lr, #8
 
-
 irq_ex:
 	@@ save registers
 	SAVE_ALL_EX
@@ -142,7 +135,6 @@ irq_ex:
 	RESTORE_ALL_EX
 	@@ exit exception
 	subs pc, lr, #4
-
 
 fiq_ex:
 	sub lr, lr, #4

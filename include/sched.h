@@ -21,7 +21,6 @@ typedef enum {
 	SLEEPR_SUSPEND
 } sleep_reason_t;
 
-
 struct task_struct {
 	pid_t pid;
 	task_state_t state;

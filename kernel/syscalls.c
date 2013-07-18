@@ -7,7 +7,6 @@ sys_test_6_args(u32 a1, u32 a2, u32 a3, u32 a4, u32 a5, u32 a6)
 	return 0;
 }
 
-
 struct __test_7_args {
 	u32 a1;
 	u32 a2;

@@ -21,7 +21,6 @@
 #define PT_AP1		(1 << 5)
 #define PT_AP2		(1 << 9)
 
-
 /* MMU access permissions
  * MMU_AP_X_Y
  * X = access permissions for PL1 or higher

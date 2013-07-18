@@ -35,7 +35,6 @@ struct dm_gpt_1ms {
 	u32 towr;
 };
 
-
 #define DMT_TIOCP_SOFTRESET	(1<<0)
 #define DMT_TIOCP_SMARTIDLE	(2<<2)
 
@@ -62,7 +61,6 @@ struct dm_gpt {
 	u32 tsicr;
 	u32 tcar2;
 };
-
 
 #define DMT_1MS	(1<<0)
 #define CM2_CLKSEL	(1<<24)
@@ -93,8 +91,6 @@ struct dmtimer {
 	{ DMT_1MS, NULL, { .mem = (u32*)0x48086000 }, (u32*)0x4a009428 }, /* GPTIMER10 */
 	{ 	0, NULL, { .mem = (u32*)0x48088000 }, (u32*)0x4a009430 }  /* GPTIMER11 */
 };
-
-
 
 static void
 dmtimer_irq_callback(u32 irq_num, struct regs *regs)

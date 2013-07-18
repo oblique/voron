@@ -10,7 +10,7 @@ int irq_trigger_sgi(u32 irq_num);
 
 /* board specific */
 #define HW_IRQ(x)	(x + 32)
-#define NUM_OF_IRQ	160
+#define NR_IRQ		160
 
 static inline void
 irq_enable(void)

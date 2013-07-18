@@ -23,7 +23,7 @@ struct gicc {
  * of the processor that requested the interrupt. */
 #define SGIR_TARGER_CPU_REQ	(2 << 24)
 
-#define NUM_OF_SGI	15
+#define NR_SGI 15
 
 /* GICv1 Distributor registers */
 struct gicd {
@@ -47,7 +47,7 @@ struct gicd {
 
 static struct gicc *gicc = (struct gicc*)0x48240100;
 static struct gicd *gicd = (struct gicd*)0x48241000;
-static irq_callback_func irq_handlers[NUM_OF_IRQ];
+static irq_callback_func irq_handlers[NR_IRQ];
 
 int
 gic_register(u32 irq_num, irq_callback_func func)
@@ -55,7 +55,7 @@ gic_register(u32 irq_num, irq_callback_func func)
 	int i;
 	u32 val;
 
-	if (irq_num >= NUM_OF_IRQ)
+	if (irq_num >= NR_IRQ)
 		return -EINVAL;
 
 	/* set callback function */
@@ -87,7 +87,7 @@ gic_handler(struct regs *regs)
 	id = IAR_ID(iar);
 
 	/* call handler */
-	if (id < NUM_OF_IRQ && irq_handlers[id] != NULL)
+	if (id < NR_IRQ && irq_handlers[id] != NULL)
 		irq_handlers[id](id, regs);
 
 	/* end of interrupt */
@@ -97,7 +97,7 @@ gic_handler(struct regs *regs)
 int
 gic_trigger_sgi(u32 irq_num)
 {
-	if (irq_num > NUM_OF_SGI)
+	if (irq_num > NR_SGI)
 		return -EINVAL;
 
 	writel(irq_num | SGIR_TARGER_CPU_REQ, &gicd->sgir);

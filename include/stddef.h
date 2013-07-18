@@ -5,10 +5,10 @@
 
 #define NULL	((void*)0)
 
-enum {
+typedef enum {
 	false = 0,
 	true = 1
-};
+} bool;
 
 #define offsetof(type, member) ((uintptr_t)&((type*)0)->member)
 

@@ -25,7 +25,7 @@ static int ndebug = 0;
 static spinlock_t pool_lock = SPINLOCK_INIT;
 
 struct pool *
-pool_init(void)
+init_pool(void)
 {
 	struct pool *pool;
 
@@ -38,7 +38,7 @@ pool_init(void)
 }
 
 void
-pool_free(struct pool *pool)
+free_pool(struct pool *pool)
 {
 	struct item *item;
 	size_t i;
@@ -57,7 +57,7 @@ pool_free(struct pool *pool)
  * If there is an unused item of sufficient size with the same
  * `id' then it will be re-used. */
 void *
-item_alloc(struct pool *pool, size_t n, item_id id)
+alloc_item(struct pool *pool, size_t n, item_id id)
 {
 	struct item *tmp;
 	struct item *item;
@@ -104,7 +104,7 @@ item_alloc(struct pool *pool, size_t n, item_id id)
  * free the underlying memory, it just marks those items
  * as unused. */
 void
-item_free(struct pool *pool, item_id id)
+free_item(struct pool *pool, item_id id)
 {
 	struct item *item;
 	size_t i;

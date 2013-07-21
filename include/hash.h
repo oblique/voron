@@ -12,4 +12,4 @@ int search_htable(struct htable *htable, void *data, size_t siz);
 int insert_htable(struct htable *htable, void *data, size_t siz);
 int remove_htable(struct htable *htable, void *data, size_t siz);
 
-#endif
+#endif /* __HASH_H */

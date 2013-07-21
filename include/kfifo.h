@@ -6,4 +6,4 @@ void free_kfifo(struct kfifo *kfifo);
 int enqueue_kfifo(struct kfifo *kfifo, void *data, size_t siz);
 int dequeue_kfifo(struct kfifo *kfifo, void *data, size_t siz);
 
-#endif
+#endif /* __KFIFO_H */

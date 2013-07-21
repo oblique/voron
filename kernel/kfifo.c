@@ -45,6 +45,9 @@ enqueue_kfifo(struct kfifo *kfifo, void *buf, size_t siz)
 {
 	void *tmp;
 
+	if (!siz)
+		return 0;
+
 	spinlock_lock(&kfifo_lock);
 	if (kfifo->cap - kfifo->siz >= siz) {
 		memcpy(kfifo->buf + kfifo->siz, buf, siz);
@@ -69,6 +72,9 @@ enqueue_kfifo(struct kfifo *kfifo, void *buf, size_t siz)
 int
 dequeue_kfifo(struct kfifo *kfifo, void *buf, size_t siz)
 {
+	if (!siz)
+		return 0;
+
 	spinlock_lock(&kfifo_lock);
 	if (kfifo->siz < siz) {
 		spinlock_unlock(&kfifo_lock);

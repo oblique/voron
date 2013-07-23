@@ -19,10 +19,10 @@ struct item {
 struct pool {
 	struct item *item;
 	size_t siz;
+	spinlock_t lock;
 };
 
 static int ndebug = 0;
-static spinlock_t pool_lock = SPINLOCK_INIT;
 
 struct pool *
 init_pool(void)
@@ -34,6 +34,7 @@ init_pool(void)
 		return NULL;
 	pool->item = NULL;
 	pool->siz = 0;
+	spinlock_init(&pool->lock);
 	return pool;
 }
 
@@ -43,14 +44,12 @@ free_pool(struct pool *pool)
 	struct item *item;
 	size_t i;
 
-	spinlock_lock(&pool_lock);
 	for (i = 0; i < pool->siz; i++) {
 		item = &pool->item[i];
 		kfree(item->mem);
 	}
 	kfree(pool->item);
 	kfree(pool);
-	spinlock_unlock(&pool_lock);
 }
 
 /* Allocate an item in the pool of size `n' with `id'.
@@ -63,7 +62,7 @@ alloc_item(struct pool *pool, size_t n, item_id id)
 	struct item *item;
 	size_t i;
 
-	spinlock_lock(&pool_lock);
+	spinlock_lock(&pool->lock);
 	for (i = 0; i < pool->siz; i++) {
 		item = &pool->item[i];
 		if (item->id == id) {
@@ -74,7 +73,7 @@ alloc_item(struct pool *pool, size_t n, item_id id)
 					kprintf("Found unused item:%d of size %zu bytes\n",
 						item->id, item->siz);
 				item->state = ITEM_USED;
-				spinlock_unlock(&pool_lock);
+				spinlock_unlock(&pool->lock);
 				return item->mem;
 			}
 		}
@@ -96,7 +95,7 @@ alloc_item(struct pool *pool, size_t n, item_id id)
 	item->siz = n;
 	item->state = ITEM_USED;
 	pool->siz++;
-	spinlock_unlock(&pool_lock);
+	spinlock_unlock(&pool->lock);
 	return item->mem;
 }
 
@@ -109,11 +108,11 @@ free_item(struct pool *pool, item_id id)
 	struct item *item;
 	size_t i;
 
-	spinlock_lock(&pool_lock);
+	spinlock_lock(&pool->lock);
 	for (i = 0; i < pool->siz; i++) {
 		item = &pool->item[i];
 		if (item->id == id)
 			item->state = ITEM_UNUSED;
 	}
-	spinlock_unlock(&pool_lock);
+	spinlock_unlock(&pool->lock);
 }

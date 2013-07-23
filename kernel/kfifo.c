@@ -1,15 +1,14 @@
 #include <kernel.h>
 #include <alloc.h>
 #include <spinlock.h>
-#include "kfifo.h"
+#include <kfifo.h>
 
 struct kfifo {
 	uint8_t *buf;
 	size_t siz;
 	size_t cap;
+	spinlock_t lock;
 };
-
-static spinlock_t kfifo_lock = SPINLOCK_INIT;
 
 struct kfifo *
 init_kfifo(size_t cap)
@@ -28,16 +27,15 @@ init_kfifo(size_t cap)
 	}
 	kfifo->siz = 0;
 	kfifo->cap = cap;
+	spinlock_init(&kfifo->lock);
 	return kfifo;
 }
 
 void
 free_kfifo(struct kfifo *kfifo)
 {
-	spinlock_lock(&kfifo_lock);
 	kfree(kfifo->buf);
 	kfree(kfifo);
-	spinlock_unlock(&kfifo_lock);
 }
 
 int
@@ -48,24 +46,24 @@ enqueue_kfifo(struct kfifo *kfifo, void *buf, size_t siz)
 	if (!siz)
 		return 0;
 
-	spinlock_lock(&kfifo_lock);
+	spinlock_lock(&kfifo->lock);
 	if (kfifo->cap - kfifo->siz >= siz) {
 		memcpy(kfifo->buf + kfifo->siz, buf, siz);
 		kfifo->siz += siz;
-		spinlock_unlock(&kfifo_lock);
+		spinlock_unlock(&kfifo->lock);
 		return 0;
 	}
 
 	tmp = krealloc(kfifo->buf, kfifo->cap + siz);
 	if (!tmp) {
-		spinlock_unlock(&kfifo_lock);
+		spinlock_unlock(&kfifo->lock);
 		return -1;
 	}
 	kfifo->buf = tmp;
 	memcpy(kfifo->buf + kfifo->siz, buf, siz);
 	kfifo->siz += siz;
 	kfifo->cap += siz;
-	spinlock_unlock(&kfifo_lock);
+	spinlock_unlock(&kfifo->lock);
 	return 0;
 }
 
@@ -75,14 +73,14 @@ dequeue_kfifo(struct kfifo *kfifo, void *buf, size_t siz)
 	if (!siz)
 		return 0;
 
-	spinlock_lock(&kfifo_lock);
+	spinlock_lock(&kfifo->lock);
 	if (kfifo->siz < siz) {
-		spinlock_unlock(&kfifo_lock);
+		spinlock_unlock(&kfifo->lock);
 		return -1;
 	}
 	memcpy(buf, kfifo->buf, siz);
 	memmove(kfifo->buf, kfifo->buf + siz, kfifo->siz - siz);
 	kfifo->siz -= siz;
-	spinlock_unlock(&kfifo_lock);
+	spinlock_unlock(&kfifo->lock);
 	return 0;
 }

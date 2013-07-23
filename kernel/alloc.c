@@ -131,46 +131,44 @@ krealloc(void *addr, size_t size)
 {
 	void *p;
 	struct list_head *pos;
-	struct mem_chunk *memc;
+	struct mem_chunk *memc = NULL;
 
 	if (!size && addr) {
 		kfree(addr);
 		return NULL;
 	}
 
-	if (addr) {
-		/* Lookup for the old base pointer `addr' if it is part of a
-		 * previous allocation */
-		spinlock_lock(&alloclist_lock);
-		list_for_each(pos, &alloclist) {
-			memc = list_entry(pos, struct mem_chunk, list);
-			if (addr == memc->start)
-				goto found;
+	/* If addr is NULL, allocate new space */
+	if (!addr)
+		return kmalloc(size);
+
+	/* Lookup for the old base pointer `addr' if it is part of a
+	 * previous allocation */
+	spinlock_lock(&alloclist_lock);
+	list_for_each(pos, &alloclist) {
+		memc = list_entry(pos, struct mem_chunk, list);
+		if (addr == memc->start) {
+			/* Is the new rounded size the same of the current one?
+			 * If so just return the old `addr' */
+			if (roundup(size) == memc->size) {
+				spinlock_unlock(&alloclist_lock);
+				return addr;
+			}
+			break;
 		}
-		spinlock_unlock(&alloclist_lock);
-	}
-
-	/* Allocate new space at a different base address */
-	p = kmalloc(size);
-	if (!p)
-		return NULL;
-
-	return p;
-found:
-	/* Are we shrinking the space?  If so just return the old `addr' */
-	if (size <= memc->size) {
-		spinlock_unlock(&alloclist_lock);
-		return addr;
 	}
 	spinlock_unlock(&alloclist_lock);
 
-	/* Allocate some space, copy over the old contents at `addr' and
-	 * free that space */
+	/* Allocate some space, copy over the old contents and then
+	 * free them */
 	p = kmalloc(size);
 	if (!p)
 		return NULL;
 
-	memcpy(p, addr, memc->size);
+	if (memc->size < size)
+		memcpy(p, addr, memc->size);
+	else
+		memcpy(p, addr, size);
 	kfree(addr);
 
 	return p;

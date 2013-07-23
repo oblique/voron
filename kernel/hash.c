@@ -3,7 +3,7 @@
 #include <mmu.h>
 #include <alloc.h>
 #include <spinlock.h>
-#include "hash.h"
+#include <hash.h>
 
 enum hent_state {
 	UNUSED,
@@ -21,9 +21,8 @@ struct htable {
 	struct hent *hent;
 	struct hent_ops *hent_ops;
 	size_t siz;
+	spinlock_t lock;
 };
-
-static spinlock_t htable_lock = SPINLOCK_INIT;
 
 struct htable *
 init_htable(struct hent_ops *hent_ops, size_t n)
@@ -43,16 +42,15 @@ init_htable(struct hent_ops *hent_ops, size_t n)
 		htable->hent[i].state = UNUSED;
 	htable->siz = n;
 	htable->hent_ops = hent_ops;
+	spinlock_init(&htable->lock);
 	return htable;
 }
 
 void
 free_htable(struct htable *htable)
 {
-	spinlock_lock(&htable_lock);
 	kfree(htable->hent);
 	kfree(htable);
-	spinlock_unlock(&htable_lock);
 }
 
 /* Search the hash table for the given entry.  Returns -1
@@ -64,24 +62,24 @@ search_htable(struct htable *htable, void *data, size_t siz)
 	struct hent_ops *ops;
 	size_t idx, i, j;
 
-	spinlock_lock(&htable_lock);
+	spinlock_lock(&htable->lock);
 	ops = htable->hent_ops;
 	idx = ops->hash(data, siz) % htable->siz;
 	j = idx;
 	for (i = 0; i < htable->siz; i++) {
 		hent = &htable->hent[j];
 		if (hent->state == UNUSED) {
-			spinlock_unlock(&htable_lock);
+			spinlock_unlock(&htable->lock);
 			return -1;
 		}
 		if (hent->state == USED && !ops->cmp(hent->data, data, siz)) {
-			spinlock_unlock(&htable_lock);
+			spinlock_unlock(&htable->lock);
 			return j;
 		}
 		j++;
 		j %= htable->siz;
 	}
-	spinlock_unlock(&htable_lock);
+	spinlock_unlock(&htable->lock);
 	return -1;
 }
 
@@ -94,27 +92,27 @@ insert_htable(struct htable *htable, void *data, size_t siz)
 	struct hent_ops *ops;
 	size_t idx, i, j;
 
-	spinlock_lock(&htable_lock);
+	spinlock_lock(&htable->lock);
 	ops = htable->hent_ops;
 	idx = ops->hash(data, siz) % htable->siz;
 	j = idx;
 	for (i = 0; i < htable->siz; i++) {
 		hent = &htable->hent[j];
 		if (hent->state == USED && !ops->cmp(hent->data, data, siz)) {
-			spinlock_unlock(&htable_lock);
+			spinlock_unlock(&htable->lock);
 			return j;
 		}
 		if (hent->state == UNUSED || hent->state == REMOVED) {
 			hent->data = data;
 			hent->siz = siz;
 			hent->state = USED;
-			spinlock_unlock(&htable_lock);
+			spinlock_unlock(&htable->lock);
 			return j;
 		}
 		j++;
 		j %= htable->siz;
 	}
-	spinlock_unlock(&htable_lock);
+	spinlock_unlock(&htable->lock);
 	return -1;
 }
 
@@ -127,24 +125,24 @@ remove_htable(struct htable *htable, void *data, size_t siz)
 	struct hent_ops *ops;
 	size_t idx, i, j;
 
-	spinlock_lock(&htable_lock);
+	spinlock_lock(&htable->lock);
 	ops = htable->hent_ops;
 	idx = ops->hash(data, siz) % htable->siz;
 	j = idx;
 	for (i = 0; i < htable->siz; i++) {
 		hent = &htable->hent[j];
 		if (hent->state == UNUSED) {
-			spinlock_unlock(&htable_lock);
+			spinlock_unlock(&htable->lock);
 			return -1;
 		}
 		if (hent->state == USED && !ops->cmp(hent->data, data, siz)) {
 			hent->state = REMOVED;
-			spinlock_unlock(&htable_lock);
+			spinlock_unlock(&htable->lock);
 			return j;
 		}
 		j++;
 		j %= htable->siz;
 	}
-	spinlock_unlock(&htable_lock);
+	spinlock_unlock(&htable->lock);
 	return -1;
 }

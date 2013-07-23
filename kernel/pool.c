@@ -67,10 +67,10 @@ alloc_item(struct pool *pool, size_t n, item_id id)
 		item = &pool->item[i];
 		if (item->id == id) {
 			if (ndebug > 0)
-				kprintf("Found possible unused item:%d\n", item->id);
+				kprintf("Found possible unused item: %d\n", item->id);
 			if (item->state == ITEM_UNUSED && item->siz >= n) {
 				if (ndebug > 0)
-					kprintf("Found unused item:%d of size %zu bytes\n",
+					kprintf("Found unused item: %d of size %zu bytes\n",
 						item->id, item->siz);
 				item->state = ITEM_USED;
 				spinlock_unlock(&pool->lock);
@@ -80,7 +80,7 @@ alloc_item(struct pool *pool, size_t n, item_id id)
 	}
 
 	if (ndebug > 0)
-		kprintf("Allocating new item:%d of size %zu bytes\n",
+		kprintf("Allocating new item: %d of size %zu bytes\n",
 			id, n);
 
 	tmp = krealloc(pool->item, sizeof(struct item) * (pool->siz + 1));

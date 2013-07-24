@@ -5,7 +5,7 @@
 
 struct kfifo *init_kfifo(size_t cap);
 void free_kfifo(struct kfifo *kfifo);
-int enqueue_kfifo(struct kfifo *kfifo, void *data, size_t siz);
+int enqueue_kfifo(struct kfifo *kfifo, const void *data, size_t siz);
 int dequeue_kfifo(struct kfifo *kfifo, void *data, size_t siz);
 
 #endif /* __KFIFO_H */

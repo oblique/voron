@@ -39,7 +39,7 @@ free_kfifo(struct kfifo *kfifo)
 }
 
 int
-enqueue_kfifo(struct kfifo *kfifo, void *buf, size_t siz)
+enqueue_kfifo(struct kfifo *kfifo, const void *buf, size_t siz)
 {
 	void *tmp;
 

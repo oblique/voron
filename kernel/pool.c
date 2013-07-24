@@ -103,7 +103,7 @@ alloc_item(struct pool *pool, size_t n, item_id id)
  * free the underlying memory, it just marks those items
  * as unused. */
 void
-free_item(struct pool *pool, item_id id)
+free_items(struct pool *pool, item_id id)
 {
 	struct item *item;
 	size_t i;

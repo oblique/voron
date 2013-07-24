@@ -57,7 +57,7 @@ enqueue_kfifo(struct kfifo *kfifo, void *buf, size_t siz)
 	tmp = krealloc(kfifo->buf, kfifo->cap + siz);
 	if (!tmp) {
 		spinlock_unlock(&kfifo->lock);
-		return -1;
+		return -ENOMEM;
 	}
 	kfifo->buf = tmp;
 	memcpy(kfifo->buf + kfifo->siz, buf, siz);
@@ -76,7 +76,7 @@ dequeue_kfifo(struct kfifo *kfifo, void *buf, size_t siz)
 	spinlock_lock(&kfifo->lock);
 	if (kfifo->siz < siz) {
 		spinlock_unlock(&kfifo->lock);
-		return -1;
+		return -EINVAL;
 	}
 	memcpy(buf, kfifo->buf, siz);
 	memmove(kfifo->buf, kfifo->buf + siz, kfifo->siz - siz);

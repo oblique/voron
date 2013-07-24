@@ -1,6 +1,8 @@
 #ifndef __HASH_H
 #define __HASH_H
 
+#include <inttypes.h>
+
 struct hent_ops {
 	unsigned long (*hash)(void *data, size_t siz);
 	int (*cmp)(void *src, void *dst, size_t siz);

@@ -1,6 +1,8 @@
 #ifndef __POOL_H
 #define __POOL_H
 
+#include <inttypes.h>
+
 typedef int item_id;
 
 struct pool *init_pool(void);

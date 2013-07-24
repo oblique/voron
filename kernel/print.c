@@ -47,6 +47,51 @@ print_int(int n)
 }
 
 static int
+print_ssize_t(ssize_t n)
+{
+	int ret = 0;
+	ssize_t i = 1;
+
+	if (n > 0) {
+		while (n/i >= 10)
+			i *= 10;
+	} else if (n < 0) {
+		kputchar('-');
+		ret++;
+		while (n/i <= -10)
+			i *= 10;
+	}
+
+	while (i > 0) {
+		kputchar('0' + abs(n/i));
+		ret++;
+		n -= (n/i)*i;
+		i /= 10;
+	}
+
+	return ret;
+}
+
+static int
+print_size_t(size_t n)
+{
+	int ret = 0;
+	size_t i = 1;
+
+	while (n/i >= 10)
+		i *= 10;
+
+	while (i > 0) {
+		kputchar('0' + abs(n/i));
+		ret++;
+		n -= (n/i)*i;
+		i /= 10;
+	}
+
+	return ret;
+}
+
+static int
 print_hexint(uint_t n)
 {
 	uint_t x, mask;
@@ -133,6 +178,8 @@ kvprintf(const char *fmt, va_list ap)
 	int d, ret = 0;
 	uint_t x;
 	uintptr_t p;
+	size_t sz;
+	ssize_t ssz;
 	char c, *s;
 
 	while (*fmt) {
@@ -160,6 +207,16 @@ kvprintf(const char *fmt, va_list ap)
 				c = va_arg(ap, char);
 				kputchar(c);
 				ret++;
+				break;
+			case 'z':
+				fmt++;
+				if (*fmt == 'u') {
+					sz = va_arg(ap, size_t);
+					ret += print_size_t(sz);
+				} else if (*fmt == 'd') {
+					ssz = va_arg(ap, ssize_t);
+					ret += print_ssize_t(ssz);
+				}
 				break;
 			case '%':
 				kputchar('%');

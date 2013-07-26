@@ -1,148 +1,139 @@
-/* Simple hash table implementation using open-addressing */
 #include <kernel.h>
-#include <mmu.h>
 #include <alloc.h>
 #include <spinlock.h>
 #include <hash.h>
 
-enum hent_state {
-	UNUSED,
-	USED,
-	REMOVED,
-};
+enum { CHAIN_SIZ = 32 };
 
-struct hent {
-	void *data;
-	size_t siz;
-	enum hent_state state;
+struct hentry {
+	struct {
+		void *data;
+		size_t siz;
+	} c[CHAIN_SIZ];
 };
 
 struct htable {
-	struct hent *hent;
-	struct hent_ops *hent_ops;
+	struct hentry *e;
+	struct hops *ops;
 	size_t siz;
 	spinlock_t lock;
 };
 
 struct htable *
-init_htable(struct hent_ops *hent_ops, size_t n)
+init_htable(struct hops *ops, size_t siz)
 {
-	struct htable *htable;
-	size_t i;
+	struct htable *ht;
+	size_t i, j;
 
-	htable = kmalloc(sizeof(*htable));
-	if (!htable)
+	if (!ops || !ops->hash || !ops->cmp || !siz)
 		return NULL;
-	htable->hent = kcalloc(n, sizeof(struct hent));
-	if (!htable->hent) {
-		kfree(htable);
+
+	ht = kmalloc(sizeof(*ht));
+	if (!ht)
+		return NULL;
+	ht->e = kmalloc(siz * sizeof(*ht->e));
+	if (!ht->e) {
+		kfree(ht);
 		return NULL;
 	}
-	for (i = 0; i < n; i++)
-		htable->hent[i].state = UNUSED;
-	htable->siz = n;
-	htable->hent_ops = hent_ops;
-	spinlock_init(&htable->lock);
-	return htable;
+	for (i = 0; i < siz; i++) {
+		for (j = 0; j < CHAIN_SIZ; j++) {
+			ht->e[i].c[j].data = NULL;
+			ht->e[i].c[j].siz = 0;
+		}
+	}
+	ht->siz = siz;
+	ht->ops = ops;
+	spinlock_init(&ht->lock);
+	return ht;
 }
 
 void
-free_htable(struct htable *htable)
+kfree_htable(struct htable *ht)
 {
-	kfree(htable->hent);
-	kfree(htable);
+	kfree(ht->e);
+	kfree(ht);
 }
 
-/* Search the hash table for the given entry.  Returns -1
- * on failure and the index of the entry on success. */
-int
-search_htable(struct htable *htable, void *data, size_t siz)
+long
+search_htable(struct htable *ht, void *data, size_t siz)
 {
-	struct hent *hent;
-	struct hent_ops *ops;
-	size_t idx, i, j;
+	struct hentry *e;
+	struct hops *ops;
+	long i;
+	size_t j;
 
-	spinlock_lock(&htable->lock);
-	ops = htable->hent_ops;
-	idx = ops->hash(data, siz) % htable->siz;
-	j = idx;
-	for (i = 0; i < htable->siz; i++) {
-		hent = &htable->hent[j];
-		if (hent->state == UNUSED) {
-			spinlock_unlock(&htable->lock);
-			return -1;
+	if (!ht || !data || !siz)
+		return -1;
+
+	spinlock_lock(&ht->lock);
+	ops = ht->ops;
+	i = ops->hash(data, siz) % ht->siz;
+	e = &ht->e[i];
+	for (j = 0; j < CHAIN_SIZ; j++) {
+		if (!e->c[j].data || e->c[j].siz != siz)
+			continue;
+		if (!ops->cmp(e->c[j].data, data, siz)) {
+			spinlock_unlock(&ht->lock);
+			return i;
 		}
-		if (hent->state == USED && !ops->cmp(hent->data, data, siz)) {
-			spinlock_unlock(&htable->lock);
-			return j;
-		}
-		j++;
-		j %= htable->siz;
 	}
-	spinlock_unlock(&htable->lock);
+	spinlock_unlock(&ht->lock);
 	return -1;
 }
 
-/* Insert the given entry in the hash table.  Ignore duplicates.
- * Return the index on a successful insertion, -1 if the table is full. */
-int
-insert_htable(struct htable *htable, void *data, size_t siz)
+long
+insert_htable(struct htable *ht, void *data, size_t siz)
 {
-	struct hent *hent;
-	struct hent_ops *ops;
-	size_t idx, i, j;
+	struct hentry *e;
+	struct hops *ops;
+	long i;
+	size_t j;
 
-	spinlock_lock(&htable->lock);
-	ops = htable->hent_ops;
-	idx = ops->hash(data, siz) % htable->siz;
-	j = idx;
-	for (i = 0; i < htable->siz; i++) {
-		hent = &htable->hent[j];
-		if (hent->state == USED && !ops->cmp(hent->data, data, siz)) {
-			spinlock_unlock(&htable->lock);
-			return j;
-		}
-		if (hent->state == UNUSED || hent->state == REMOVED) {
-			hent->data = data;
-			hent->siz = siz;
-			hent->state = USED;
-			spinlock_unlock(&htable->lock);
-			return j;
-		}
-		j++;
-		j %= htable->siz;
+	if (!ht || !data || !siz)
+		return -1;
+
+	spinlock_lock(&ht->lock);
+	ops = ht->ops;
+	i = ops->hash(data, siz) % ht->siz;
+	e = &ht->e[i];
+	for (j = 0; j < CHAIN_SIZ; j++) {
+		if (e->c[j].data)
+			continue;
+		e->c[j].data = data;
+		e->c[j].siz = siz;
+		spinlock_unlock(&ht->lock);
+		return i;
 	}
-	spinlock_unlock(&htable->lock);
+	spinlock_unlock(&ht->lock);
 	return -1;
 }
 
-/* Remove an entry from the hash table.  Return -1 on failure,
- * and the index of the entry on success. */
-int
-remove_htable(struct htable *htable, void *data, size_t siz)
+long
+remove_htable(struct htable *ht, void *data, size_t siz)
 {
-	struct hent *hent;
-	struct hent_ops *ops;
-	size_t idx, i, j;
+	struct hentry *e;
+	struct hops *ops;
+	long i;
+	size_t j;
 
-	spinlock_lock(&htable->lock);
-	ops = htable->hent_ops;
-	idx = ops->hash(data, siz) % htable->siz;
-	j = idx;
-	for (i = 0; i < htable->siz; i++) {
-		hent = &htable->hent[j];
-		if (hent->state == UNUSED) {
-			spinlock_unlock(&htable->lock);
-			return -1;
+	if (!ht || !data || !siz)
+		return -1;
+
+	spinlock_lock(&ht->lock);
+	ops = ht->ops;
+	i = ops->hash(data, siz) % ht->siz;
+	e = &ht->e[i];
+	for (j = 0; j < CHAIN_SIZ; j++) {
+		if (!e->c[j].data || e->c[j].siz != siz)
+			continue;
+		if (!ops->cmp(e->c[j].data, data, siz)) {
+			e->c[j].data = NULL;
+			e->c[j].siz = 0;
+			spinlock_unlock(&ht->lock);
+			return i;
 		}
-		if (hent->state == USED && !ops->cmp(hent->data, data, siz)) {
-			hent->state = REMOVED;
-			spinlock_unlock(&htable->lock);
-			return j;
-		}
-		j++;
-		j %= htable->siz;
 	}
-	spinlock_unlock(&htable->lock);
+	spinlock_unlock(&ht->lock);
 	return -1;
 }

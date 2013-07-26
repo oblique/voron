@@ -64,7 +64,7 @@ search_htable(struct htable *ht, void *data, size_t siz)
 	size_t j;
 
 	if (!ht || !data || !siz)
-		return -1;
+		return -EINVAL;
 
 	spinlock_lock(&ht->lock);
 	ops = ht->ops;
@@ -91,7 +91,7 @@ insert_htable(struct htable *ht, void *data, size_t siz)
 	size_t j;
 
 	if (!ht || !data || !siz)
-		return -1;
+		return -EINVAL;
 
 	spinlock_lock(&ht->lock);
 	ops = ht->ops;
@@ -118,7 +118,7 @@ remove_htable(struct htable *ht, void *data, size_t siz)
 	size_t j;
 
 	if (!ht || !data || !siz)
-		return -1;
+		return -EINVAL;
 
 	spinlock_lock(&ht->lock);
 	ops = ht->ops;

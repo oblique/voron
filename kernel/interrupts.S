@@ -1,4 +1,5 @@
 #include <p_modes.h>
+#include <errno.h>
 
 .section .text
 .global vector_table_init
@@ -73,29 +74,39 @@ reset:
 undefined_insn:
 	movs pc, lr
 
-/* system call number is the swi number
- * if system call takes less than 7 arguments
- * we use r0 until r5 from userland to pass them
- * if it takes more than 6 arguments we pass a
- * pointer of the arguments at r0
- */
+@@ SWI/SVC handler use Linux ARM EABI calling convention:
+@@ r0 - r6 registers are used for the syscall arguments, it can take up to 7 arguments.
+@@ r7 register is used for the syscall number.
 swi_ex:
-	stmfd sp!, { r6 - r12, lr }
-	mrs r6, spsr
-	str r6, [sp, #-4]!
+	@@ save r8 - r12, lr registers
+	stmfd sp!, { r8 - r12, lr }
+	@@ save spsr register
+	mrs r8, spsr
+	str r8, [sp, #-4]!
 
-	ldr r6, [lr, #-4]
-	bic r6, r6, #0xff000000
+	@@ calculate the number of system calls
+	ldr r8, =syscall_table_end
+	ldr r8, [r8]
+	lsr r8, r8, #2
 
-	stmfd sp!, { r4, r5 }
+	@@ if syscall number is out of syscall table boundaries then return -ENOSYS
+	cmp r7, r8
+	movcs r0, #-ENOSYS
+	bcs 2f
+
+	@@ prepare arguments and call the system call
+	stmfd sp!, { r4 - r6 }
 	ldr lr, =1f
-	ldr r7, =syscall_table
-	ldr pc, [r7, r6, lsl #2]
+	ldr r8, =syscall_table
+	ldr pc, [r8, r7, lsl #2]
+
+	@@ return from SWI/SVC exception handler
 1:
-	add sp, sp, #8
-	ldr r6, [sp], #4
-	msr spsr, r6
-	ldmfd sp!, { r6 - r12, pc }^
+	add sp, sp, #(4 * 3)
+2:
+	ldr r8, [sp], #4
+	msr spsr, r8
+	ldmfd sp!, { r8 - r12, pc }^
 
 prefetch_abort:
 	@@ save registers

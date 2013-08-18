@@ -67,28 +67,46 @@ _start:
 	b 1b
 3:
 
-	/* example of calling a system call with at least 6 arguments */
+	@@ example of calling a system call with 1 argument
 	mov r0, #1
-	mov r1, #2
-	mov r2, #3
-	mov r3, #4
-	mov r4, #5
-	mov r5, #6
+	@@ the syscall number is 0
+	mov r7, #0
 	swi #0
 
-	/* example of calling a system call with more than 6 arguments */
-	mov r0, #7
-	str r0, [sp, #-4]!
+	@@ example of calling a system call with 4 arguments
+	mov r0, #1
+	mov r1, #2
+	mov r2, #3
+	mov r3, #4
+	@@ the syscall number is 0
+	mov r7, #1
+	swi #0
+
+	@@ example of calling a system call with 5 arguments
+	mov r0, #1
+	mov r1, #2
+	mov r2, #3
+	mov r3, #4
+	mov r4, #5
+	@@ the syscall number is 0
+	mov r7, #2
+	swi #0
+
+	@@ example of calling a system call with 7 arguments
 	mov r0, #1
 	mov r1, #2
 	mov r2, #3
 	mov r3, #4
 	mov r4, #5
 	mov r5, #6
-	stmfd sp!, { r0 - r5 }
-	mov r0, sp
-	swi #1
-	add sp, sp, #(7 * 4)
+	mov r6, #7
+	@@ the syscall number is 0
+	mov r7, #3
+	swi #0
+
+	@@ out of boundary syscall number example
+	mov r7, #1000
+	swi #0
 
 	ldr r0, =kmain
 	mov r1, #0

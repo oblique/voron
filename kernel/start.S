@@ -6,15 +6,15 @@ _start:
 	cpsid if		@ disable interrupts
 	ldr sp, =_svc_stack_top	@ set SVC stack
 
-	/* set leds off */
+	@@ set leds off
 	mov r0, #0
 	bl set_leds
 
-	/* print booting message */
+	@@ print booting message
 	ldr r0, =boot_msg
 	bl kputs
 
-	/* init .bss section */
+	@@ init .bss section
 	ldr r0, =_kernel_bss_start
 	ldr r1, =_kernel_bss_end
 	mov r2, #0
@@ -24,19 +24,19 @@ _start:
 	cmp r0, r1
 	blo 1b
 
-	/* initialize vector table */
+	@@ initialize vector table
 	bl vector_table_init
 
-	/* disable caches for now */
+	@@ disable caches for now
 	mrc p15, 0, r0, c1, c0, 0
 	bic r0, r0, #(1 << 12)          @ set I flag to 0 (disable instruction cache)
 	bic r0, r0, #(1 << 2)		@ set C flag to 0 (disable data cache)
 	mcr p15, 0, r0, c1, c0, 0
 
-	/* initialize memory management */
+	@@ initialize memory management
 	bl mm_init
 
-	/* initialize interrupts */
+	@@ initialize interrupts
 	cps #CPS_FIQ		@ change to FIQ mode
 	ldr sp, =_fiq_stack_top @ set FIQ stack
 
@@ -52,7 +52,7 @@ _start:
 
 	bl dmtimer_init
 
-	/* run constructors */
+	@@ run constructors
 	ldr r0, =_kernel_ctors_start
 	ldr r1, =_kernel_ctors_end
 1:
